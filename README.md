@@ -18,8 +18,10 @@ notification when they start a game, and follow their daily / session stats.
   a direct spectate link, time elapsed since the game was detected, and last
   checked time. Manual **Refresh now** button included.
 - **Browser notifications** with a permission button, fired once per new game
-  (`"{username} started a game on Lichess"`, click to open the game), with no
-  duplicate notifications and an automatic reset when play stops.
+  (`"{username} is playing"`, click to open the game), with no duplicate
+  notifications and an automatic reset when play stops. Shown through the
+  service worker so they survive the tab losing focus, with a **Test alert**
+  button to confirm the setup. See "Running it 24/7" below for always-on use.
 - **Optional sound alert** that plays a short chime on a new game (toggle in the
   toolbar, preference persisted).
 - **Performance tabs** for each speed (Bullet, Blitz, Rapid, Classical,
@@ -29,8 +31,11 @@ notification when they start a game, and follow their daily / session stats.
   your local timezone: wins, losses, draws, total, and net Elo. Elo is only
   summed from finished **rated** games that carry a rating delta, otherwise it
   shows **N/A** (no guessing).
-- **Session stats** with Start / Reset (start time persisted in `localStorage`),
-  counting only games finished after the session began, plus a live duration.
+- **Automatic play sessions**: games are grouped into sessions by activity, so
+  a break longer than the configured gap (default 30 minutes, adjustable to
+  15 / 30 / 60 / 120) starts a new session. The current session shows its live
+  duration, W/L/D, Elo, start time, and how many sessions you have today. No
+  manual start/stop needed.
 - **Insights** card: win rate split by color (White vs Black), current streak,
   and best win / worst loss runs.
 - **Rating trend sparkline** of recent rated games for the selected speed.
@@ -55,8 +60,12 @@ lichess-friend-watcher/
 ├── tsconfig.json
 ├── tsconfig.node.json
 ├── vite.config.ts
+├── server/
+│   └── watcher.mjs            # standalone 24/7 poller + push notifier
 ├── public/
-│   └── favicon.svg
+│   ├── favicon.svg
+│   ├── manifest.webmanifest   # PWA manifest (installable)
+│   └── sw.js                  # service worker (reliable notifications)
 └── src/
     ├── api/
     │   └── lichess.ts          # API calls: validate user, profile, status, games
@@ -71,7 +80,7 @@ lichess-friend-watcher/
     │   ├── StatusCard.tsx
     │   ├── CurrentGameCard.tsx
     │   ├── StatsCard.tsx
-    │   ├── SessionControls.tsx
+    │   ├── SessionCard.tsx     # automatic play-session detection
     │   ├── InsightsCard.tsx    # color split + streaks
     │   ├── Sparkline.tsx
     │   ├── TrendCard.tsx       # rating trend sparkline
@@ -86,7 +95,8 @@ lichess-friend-watcher/
     │   └── useTheme.ts
     ├── utils/
     │   ├── games.ts            # raw game -> normalized record, W/L/D logic
-    │   ├── stats.ts            # aggregation, today / session filters
+    │   ├── stats.ts            # aggregation, today filter
+    │   ├── sessions.ts         # group games into play sessions by gaps
     │   ├── insights.ts         # color split + streak computation
     │   ├── speeds.ts           # speed ordering + labels
     │   ├── sound.ts            # Web Audio chime
@@ -112,6 +122,52 @@ To create a production build:
 npm run build
 npm run preview
 ```
+
+## Running it 24/7
+
+A web page can only show notifications while a browser is actually running, so
+there are two levels of "always on".
+
+### 1. Installable app (no server)
+
+The app ships a web manifest and a service worker, so on desktop or Android you
+can **Install** it (Chrome/Edge menu, or "Add to Home screen" on Android). Once
+installed and notifications are enabled, it keeps watching and alerting while
+the app/browser is running in the background. This needs HTTPS, which your
+Vercel deployment already provides. It does **not** fire when the device is off
+or the browser is fully closed.
+
+### 2. Standalone watcher (true 24/7)
+
+For alerts even when no browser is open, run the included Node watcher on a
+host that stays on (a small VPS, a Raspberry Pi, Railway, Render, Fly.io, etc.).
+It polls Lichess and pushes a `"{username} is playing"` notification.
+
+The easiest push channel is [ntfy.sh](https://ntfy.sh): pick any hard-to-guess
+topic name, install the ntfy app on your phone and subscribe to that topic, then:
+
+```bash
+LICHESS_USER=thibault NTFY_TOPIC=my-secret-topic-9f3a npm run watch
+```
+
+Or send to a Discord/Slack/other webhook instead:
+
+```bash
+LICHESS_USER=thibault WEBHOOK_URL=https://discord.com/api/webhooks/... npm run watch
+```
+
+Environment variables:
+
+| Variable       | Required | Default            | Purpose                                   |
+| -------------- | -------- | ------------------ | ----------------------------------------- |
+| `LICHESS_USER` | yes      | -                  | Username to watch                         |
+| `NTFY_TOPIC`   | no       | -                  | ntfy.sh topic for phone push              |
+| `NTFY_SERVER`  | no       | `https://ntfy.sh`  | Self-hosted ntfy base URL                 |
+| `WEBHOOK_URL`  | no       | -                  | Generic webhook (Discord/Slack/etc.)      |
+| `POLL_MS`      | no       | `8000`             | Poll interval in ms (minimum 5000)        |
+
+With no push channel set it just logs to the console. To keep it alive across
+restarts, run it under `pm2`, a `systemd` service, or your host's process manager.
 
 ## Notes on the Lichess API
 

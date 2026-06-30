@@ -6,7 +6,7 @@ import { useGames } from './hooks/useGames';
 import { useProfile } from './hooks/useProfile';
 import { useNotifications } from './hooks/useNotifications';
 import { useTheme } from './hooks/useTheme';
-import { computeStats, filterSession, filterToday } from './utils/stats';
+import { computeStats, filterToday } from './utils/stats';
 import { orderSpeeds, speedLabel } from './utils/speeds';
 
 import { Header } from './components/Header';
@@ -17,7 +17,7 @@ import { PerformanceTabs } from './components/PerformanceTabs';
 import { StatusCard } from './components/StatusCard';
 import { CurrentGameCard } from './components/CurrentGameCard';
 import { StatsCard } from './components/StatsCard';
-import { SessionControls } from './components/SessionControls';
+import { SessionCard } from './components/SessionCard';
 import { InsightsCard } from './components/InsightsCard';
 import { TrendCard } from './components/TrendCard';
 import { GamesTable } from './components/GamesTable';
@@ -29,7 +29,7 @@ export default function App() {
 
   const [recent, setRecent] = useLocalStorage<string[]>('lfw.recentUsernames', []);
   const [watched, setWatched] = useLocalStorage<string | null>('lfw.selectedUsername', null);
-  const [sessionStart, setSessionStart] = useLocalStorage<number | null>('lfw.sessionStart', null);
+  const [sessionGapMin, setSessionGapMin] = useLocalStorage<number>('lfw.sessionGap', 30);
   const [soundEnabled, setSoundEnabled] = useLocalStorage<boolean>('lfw.sound', false);
 
   const [searchLoading, setSearchLoading] = useState(false);
@@ -43,7 +43,10 @@ export default function App() {
   const statusState = useStatus(watched);
   const gamesState = useGames(watched, refreshKey);
   const { profile, loading: profileLoading } = useProfile(watched);
-  const { permission, requestPermission } = useNotifications(statusState.status, soundEnabled);
+  const { permission, requestPermission, testNotification } = useNotifications(
+    statusState.status,
+    soundEnabled,
+  );
 
   // Refetch games whenever a game starts or ends so the table stays current.
   const detectedAt = statusState.gameDetectedAt;
@@ -171,12 +174,9 @@ export default function App() {
   );
 
   const dailyStats = useMemo(() => computeStats(filterToday(filteredGames)), [filteredGames]);
-  const sessionStats = useMemo(
-    () => computeStats(sessionStart ? filterSession(filteredGames, sessionStart) : []),
-    [filteredGames, sessionStart],
-  );
 
   const scopeLabel = speedFilter === 'all' ? 'all speeds' : speedLabel(speedFilter);
+  const isPlaying = statusState.status?.playing ?? false;
 
   return (
     <div className="app">
@@ -185,6 +185,11 @@ export default function App() {
       <div className="toolbar">
         <ThemePicker themes={themes} value={themeId} onChange={setThemeId} />
         <NotificationButton permission={permission} onRequest={requestPermission} />
+        {permission === 'granted' && (
+          <button className="btn btn--ghost" onClick={() => testNotification(watched ?? undefined)}>
+            Test alert
+          </button>
+        )}
         <button
           className={`btn btn--ghost ${soundEnabled ? 'btn--on' : ''}`}
           onClick={() => setSoundEnabled((v) => !v)}
@@ -231,17 +236,12 @@ export default function App() {
             />
             <CurrentGameCard status={statusState.status} gameDetectedAt={statusState.gameDetectedAt} />
             <StatsCard title={`Today · ${scopeLabel}`} stats={dailyStats} loading={gamesState.loading} />
-            <StatsCard
-              title={`Session · ${scopeLabel}`}
-              stats={sessionStats}
+            <SessionCard
+              games={gamesState.games}
+              gapMinutes={sessionGapMin}
+              onGapChange={setSessionGapMin}
+              isPlaying={isPlaying}
               loading={gamesState.loading}
-              footer={
-                <SessionControls
-                  sessionStart={sessionStart}
-                  onStart={() => setSessionStart(Date.now())}
-                  onReset={() => setSessionStart(null)}
-                />
-              }
             />
           </div>
 

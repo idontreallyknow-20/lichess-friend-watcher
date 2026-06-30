@@ -10,9 +10,47 @@ function currentPermission(): Permission {
 }
 
 /**
+ * Show a notification, preferring the service worker registration (more
+ * reliable, works while the tab is backgrounded, and clickable via the SW) and
+ * falling back to a plain Notification when no SW is active.
+ */
+function showNotification(title: string, url?: string, tag?: string): void {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+
+  const options: NotificationOptions = {
+    tag,
+    icon: '/favicon.svg',
+    badge: '/favicon.svg',
+    data: url ? { url } : undefined,
+  };
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready
+      .then((reg) => reg.showNotification(title, options))
+      .catch(() => fallbackNotification(title, url, tag));
+    return;
+  }
+  fallbackNotification(title, url, tag);
+}
+
+function fallbackNotification(title: string, url?: string, tag?: string): void {
+  try {
+    const n = new Notification(title, { tag, icon: '/favicon.svg' });
+    if (url) {
+      n.onclick = () => {
+        window.open(url, '_blank', 'noopener');
+        n.close();
+      };
+    }
+  } catch {
+    // Construction can throw on some platforms (e.g. Android needs the SW path).
+  }
+}
+
+/**
  * Browser-notification handling for the watched user.
  *
- * - Notifies once when a new game starts.
+ * - Notifies once when a new game starts ("{name} is playing").
  * - Never notifies twice for the same game id (tracked in a ref).
  * - Resets when the user stops playing, so the next game can notify again.
  */
@@ -37,6 +75,20 @@ export function useNotifications(status: UserStatus | null, soundEnabled = false
     }
   }, []);
 
+  /** Fire a sample notification so the user can confirm the setup works. */
+  const testNotification = useCallback(
+    async (name?: string) => {
+      if (typeof Notification === 'undefined') return;
+      if (Notification.permission !== 'granted') {
+        await requestPermission();
+      }
+      if (Notification.permission === 'granted') {
+        showNotification(`${name ?? 'Test'} is playing`, 'https://lichess.org', 'lfw-test');
+      }
+    },
+    [requestPermission],
+  );
+
   useEffect(() => {
     if (!status) return;
 
@@ -57,19 +109,8 @@ export function useNotifications(status: UserStatus | null, soundEnabled = false
       playChime();
     }
 
-    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      const gameUrl = `https://lichess.org/${gameId}`;
-      const notification = new Notification(`${status.name} started a game on Lichess`, {
-        body: 'Click to spectate the game.',
-        tag: gameId, // collapses duplicates at the OS level too
-        icon: '/favicon.svg',
-      });
-      notification.onclick = () => {
-        window.open(gameUrl, '_blank', 'noopener');
-        notification.close();
-      };
-    }
+    showNotification(`${status.name} is playing`, `https://lichess.org/${gameId}`, gameId);
   }, [status]);
 
-  return { permission, requestPermission };
+  return { permission, requestPermission, testNotification };
 }

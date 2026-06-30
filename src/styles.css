@@ -496,28 +496,46 @@ code {
   padding-top: 14px;
 }
 
-/* ---------- Session controls ---------- */
-.session-controls {
+/* ---------- Session card ---------- */
+.session-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+  margin-bottom: 14px;
 }
-.session-duration {
-  display: flex;
-  flex-direction: column;
+.session-head__duration {
+  font-size: 1.8rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
-.session-duration__label {
+.session-head__state {
+  margin-left: 10px;
   font-size: 0.72rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   color: var(--text-muted);
 }
-.session-duration__value {
-  font-size: 1.2rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+.session-head__state--live {
+  color: var(--win);
+}
+.session-gap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+.select--sm {
+  padding: 5px 8px;
+  font-size: 0.78rem;
+}
+.session-foot {
+  margin-top: 12px;
+  font-size: 0.8rem;
 }
 
 /* ---------- Insights ---------- */

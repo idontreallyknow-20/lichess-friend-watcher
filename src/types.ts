@@ -27,6 +27,8 @@ export interface GameRecord {
   /** Human-readable time control, e.g. "5+3" or "Correspondence". */
   timeControl: string;
   speed: string;
+  /** Epoch ms the game started (createdAt). */
+  startTime: number;
   /** Epoch ms the game ended (lastMoveAt). */
   endTime: number;
 }

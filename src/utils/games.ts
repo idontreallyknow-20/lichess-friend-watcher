@@ -85,6 +85,7 @@ export function parseGame(raw: any, username: string): GameRecord | null {
     rated,
     timeControl: formatTimeControl(raw),
     speed: typeof raw.speed === 'string' ? raw.speed : 'unknown',
+    startTime: raw.createdAt ?? raw.lastMoveAt ?? 0,
     endTime: raw.lastMoveAt ?? raw.createdAt ?? 0,
   };
 }
