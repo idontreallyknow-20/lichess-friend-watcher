@@ -30,6 +30,7 @@ if (!USER) {
 }
 
 const STATUS_URL = `https://lichess.org/api/users/status?ids=${encodeURIComponent(USER)}&withGameIds=true`;
+const TEST = process.argv.includes('--test') || process.env.TEST === '1';
 
 let lastNotifiedGameId = null;
 
@@ -37,10 +38,9 @@ function log(...args) {
   console.log(new Date().toISOString(), ...args);
 }
 
-async function notify(name, gameId) {
-  const url = `https://lichess.org/${gameId}`;
-  const text = `${name} is playing`;
-  log(`NOTIFY: ${text} -> ${url}`);
+/** Send one push to every configured channel. */
+async function push(text, url) {
+  log(`PUSH: ${text} -> ${url}`);
 
   if (NTFY_TOPIC) {
     try {
@@ -70,6 +70,10 @@ async function notify(name, gameId) {
       log('webhook push failed:', e.message);
     }
   }
+}
+
+async function notify(name, gameId) {
+  await push(`${name} is playing`, `https://lichess.org/${gameId}`);
 }
 
 async function poll() {
@@ -113,6 +117,11 @@ log(
       ? 'Pushing to configured webhook.'
       : 'No push channel configured; logging to console only.',
 );
+
+if (TEST) {
+  log('Test mode: sending one push now so you can confirm your phone receives it.');
+  await push(`Test push for ${USER}`, `https://lichess.org/@/${encodeURIComponent(USER)}`);
+}
 
 poll();
 setInterval(poll, POLL_MS);
