@@ -166,8 +166,27 @@ Environment variables:
 | `WEBHOOK_URL`  | no       | -                  | Generic webhook (Discord/Slack/etc.)      |
 | `POLL_MS`      | no       | `8000`             | Poll interval in ms (minimum 5000)        |
 
-With no push channel set it just logs to the console. To keep it alive across
-restarts, run it under `pm2`, a `systemd` service, or your host's process manager.
+With no push channel set it just logs to the console.
+
+### Keeping it running on an always-on PC (recommended)
+
+If you have a computer that is always on, run the watcher there and let ntfy
+deliver to your phone. Use [pm2](https://pm2.keymetrics.io) so it runs in the
+background and restarts automatically. A ready-made config is included
+(`ecosystem.config.cjs`):
+
+```bash
+npm install               # once, in the project folder
+npm install -g pm2
+# edit ecosystem.config.cjs: set LICHESS_USER and NTFY_TOPIC
+pm2 start ecosystem.config.cjs
+pm2 save                  # remember the process across restarts
+pm2 startup               # prints a command to launch pm2 on boot; run it
+```
+
+Then `pm2 logs lichess-friend-watcher` to watch it, `pm2 restart` / `pm2 stop`
+to control it. On Windows, `pm2 startup` is replaced by `pm2-startup install`
+(from the `pm2-windows-startup` package) or a Task Scheduler entry.
 
 ## Notes on the Lichess API
 
