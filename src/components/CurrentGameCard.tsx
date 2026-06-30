@@ -35,7 +35,7 @@ export function CurrentGameCard({ status, gameDetectedAt }: CurrentGameCardProps
             ▶ Spectate on Lichess
           </a>
           <p className="game__note">
-            Opens the live board on lichess.org — this app shows no moves or analysis.
+            Opens the live board on lichess.org. This app shows no moves or analysis.
           </p>
         </>
       ) : (

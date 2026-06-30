@@ -1,4 +1,4 @@
-import type { GameRecord, UserStatus } from '../types';
+import type { GameRecord, Profile, UserStatus } from '../types';
 import { parseGame } from '../utils/games';
 
 const BASE = 'https://lichess.org';
@@ -31,6 +31,26 @@ export async function validateUser(username: string): Promise<string | null> {
   return data?.username ?? username;
 }
 
+/**
+ * Fetch the parts of a user's profile this app uses: canonical username and
+ * the per-speed performance ratings. Returns null when the user is not found.
+ */
+export async function fetchProfile(username: string): Promise<Profile | null> {
+  const res = await fetch(`${BASE}/api/user/${encodeURIComponent(username)}`);
+  if (res.status === 404) return null;
+  if (res.status === 429) {
+    throw new LichessError('Rate limited by Lichess. Please wait a moment.', 429);
+  }
+  if (!res.ok) {
+    throw new LichessError(`Lichess API error (${res.status}).`, res.status);
+  }
+  const data = await res.json();
+  return {
+    username: data?.username ?? username,
+    perfs: (data?.perfs ?? {}) as Profile['perfs'],
+  };
+}
+
 /** Fetch the live status of a single user. */
 export async function fetchStatus(username: string): Promise<UserStatus | null> {
   const url = `${BASE}/api/users/status?ids=${encodeURIComponent(username)}&withGameIds=true`;
@@ -55,7 +75,7 @@ export async function fetchStatus(username: string): Promise<UserStatus | null> 
 
 /**
  * Fetch recent finished games for a user via the NDJSON export endpoint.
- * Intentionally requests no moves / evals / opening data — this app only
+ * Intentionally requests no moves / evals / opening data, since this app only
  * tracks results and stats, never positions or analysis.
  */
 export async function fetchRecentGames(

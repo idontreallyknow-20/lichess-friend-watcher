@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { UserStatus } from '../types';
+import { playChime } from '../utils/sound';
 
 type Permission = NotificationPermission | 'unsupported';
 
@@ -15,11 +16,15 @@ function currentPermission(): Permission {
  * - Never notifies twice for the same game id (tracked in a ref).
  * - Resets when the user stops playing, so the next game can notify again.
  */
-export function useNotifications(status: UserStatus | null) {
+export function useNotifications(status: UserStatus | null, soundEnabled = false) {
   const [permission, setPermission] = useState<Permission>(currentPermission);
 
   // Last game id we already notified about. null = no active notified game.
   const lastNotifiedRef = useRef<string | null>(null);
+
+  // Keep the latest sound preference without re-running the notify effect.
+  const soundRef = useRef(soundEnabled);
+  soundRef.current = soundEnabled;
 
   const requestPermission = useCallback(async () => {
     if (typeof Notification === 'undefined') return;
@@ -47,6 +52,10 @@ export function useNotifications(status: UserStatus | null) {
     if (gameId === lastNotifiedRef.current) return;
 
     lastNotifiedRef.current = gameId;
+
+    if (soundRef.current) {
+      playChime();
+    }
 
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       const gameUrl = `https://lichess.org/${gameId}`;

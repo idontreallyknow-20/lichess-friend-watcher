@@ -40,3 +40,20 @@ export interface StatBlock {
   /** Net Elo change. null means "N/A" (no rated games with rating data). */
   eloChange: number | null;
 }
+
+/** One performance category (bullet, blitz, rapid, ...) from a user's profile. */
+export interface Perf {
+  games: number;
+  rating: number;
+  rd?: number;
+  /** Recent rating progression over the last ~12 games. */
+  prog: number;
+  /** Provisional rating flag. */
+  prov?: boolean;
+}
+
+/** Subset of a Lichess user profile this app uses. */
+export interface Profile {
+  username: string;
+  perfs: Record<string, Perf>;
+}

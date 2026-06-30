@@ -39,7 +39,7 @@ export function StatusCard({ username, status, lastChecked, loading, error }: St
       <dl className="status__meta">
         <div>
           <dt>Last checked</dt>
-          <dd>{lastChecked ? formatClock(lastChecked) : '—'}</dd>
+          <dd>{lastChecked ? formatClock(lastChecked) : '-'}</dd>
         </div>
         <div>
           <dt>Polling</dt>

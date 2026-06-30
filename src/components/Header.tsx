@@ -6,7 +6,7 @@ export function Header() {
         <div>
           <h1 className="header__title">Lichess Friend Watcher</h1>
           <p className="header__subtitle">
-            Spectate &amp; track stats — no advice, no analysis, just watching.
+            Spectate &amp; track stats. No advice, no analysis, just watching.
           </p>
         </div>
       </div>

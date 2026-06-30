@@ -1,36 +1,49 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { validateUser } from './api/lichess';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useStatus } from './hooks/useStatus';
 import { useGames } from './hooks/useGames';
+import { useProfile } from './hooks/useProfile';
 import { useNotifications } from './hooks/useNotifications';
+import { useTheme } from './hooks/useTheme';
 import { computeStats, filterSession, filterToday } from './utils/stats';
+import { orderSpeeds, speedLabel } from './utils/speeds';
 
 import { Header } from './components/Header';
+import { ThemePicker } from './components/ThemePicker';
 import { SearchBar } from './components/SearchBar';
 import { RecentUsers } from './components/RecentUsers';
+import { PerformanceTabs } from './components/PerformanceTabs';
 import { StatusCard } from './components/StatusCard';
 import { CurrentGameCard } from './components/CurrentGameCard';
 import { StatsCard } from './components/StatsCard';
 import { SessionControls } from './components/SessionControls';
+import { InsightsCard } from './components/InsightsCard';
+import { TrendCard } from './components/TrendCard';
 import { GamesTable } from './components/GamesTable';
 
 const MAX_RECENT = 8;
 
 export default function App() {
+  const { themeId, setThemeId, themes } = useTheme();
+
   const [recent, setRecent] = useLocalStorage<string[]>('lfw.recentUsernames', []);
   const [watched, setWatched] = useLocalStorage<string | null>('lfw.selectedUsername', null);
   const [sessionStart, setSessionStart] = useLocalStorage<number | null>('lfw.sessionStart', null);
+  const [soundEnabled, setSoundEnabled] = useLocalStorage<boolean>('lfw.sound', false);
 
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [speedFilter, setSpeedFilter] = useState<string>('all');
+  const [copied, setCopied] = useState(false);
 
   // Bumped to force a games refetch (new game detected / manual refresh).
   const [refreshKey, setRefreshKey] = useState(0);
 
   const statusState = useStatus(watched);
   const gamesState = useGames(watched, refreshKey);
-  const { permission, requestPermission } = useNotifications(statusState.status);
+  const { profile, loading: profileLoading } = useProfile(watched);
+  const { permission, requestPermission } = useNotifications(statusState.status, soundEnabled);
 
   // Refetch games whenever a game starts or ends so the table stays current.
   const detectedAt = statusState.gameDetectedAt;
@@ -69,6 +82,46 @@ export default function App() {
     [addRecent, setWatched],
   );
 
+  // On first load, a "?user=" query parameter takes priority (shareable links).
+  const bootstrapped = useRef(false);
+  useEffect(() => {
+    if (bootstrapped.current) return;
+    bootstrapped.current = true;
+    const param = new URLSearchParams(window.location.search).get('user');
+    if (param && param.trim()) {
+      handleWatch(param.trim());
+    }
+  }, [handleWatch]);
+
+  // Keep the URL in sync with the watched user so it can be copied / shared.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (watched) url.searchParams.set('user', watched);
+    else url.searchParams.delete('user');
+    window.history.replaceState(null, '', url);
+  }, [watched]);
+
+  // Reflect live status in the browser tab title.
+  useEffect(() => {
+    const base = 'Lichess Friend Watcher';
+    const s = statusState.status;
+    if (!watched || !s) {
+      document.title = base;
+      return;
+    }
+    if (s.playing) document.title = `● ${s.name} playing`;
+    else if (s.online) document.title = `${s.name} online`;
+    else document.title = `${s.name} offline`;
+    return () => {
+      document.title = base;
+    };
+  }, [watched, statusState.status]);
+
+  // Reset the speed filter when switching players.
+  useEffect(() => {
+    setSpeedFilter('all');
+  }, [watched]);
+
   const handleSelectRecent = useCallback(
     (name: string) => {
       setSearchError(null);
@@ -90,20 +143,62 @@ export default function App() {
     gamesState.refresh();
   }, [statusState, gamesState]);
 
-  const dailyStats = useMemo(() => computeStats(filterToday(gamesState.games)), [gamesState.games]);
-  const sessionStats = useMemo(
-    () => computeStats(sessionStart ? filterSession(gamesState.games, sessionStart) : []),
-    [gamesState.games, sessionStart],
+  const handleShare = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard unavailable; ignore.
+    }
+  }, []);
+
+  // Speeds available to filter by: those present in recent games or rated perfs.
+  const availableSpeeds = useMemo(() => {
+    const set = new Set<string>();
+    for (const g of gamesState.games) set.add(g.speed);
+    if (profile) {
+      for (const [key, perf] of Object.entries(profile.perfs)) {
+        if (perf.games > 0) set.add(key);
+      }
+    }
+    return orderSpeeds(set);
+  }, [gamesState.games, profile]);
+
+  const filteredGames = useMemo(
+    () => (speedFilter === 'all' ? gamesState.games : gamesState.games.filter((g) => g.speed === speedFilter)),
+    [gamesState.games, speedFilter],
   );
+
+  const dailyStats = useMemo(() => computeStats(filterToday(filteredGames)), [filteredGames]);
+  const sessionStats = useMemo(
+    () => computeStats(sessionStart ? filterSession(filteredGames, sessionStart) : []),
+    [filteredGames, sessionStart],
+  );
+
+  const scopeLabel = speedFilter === 'all' ? 'all speeds' : speedLabel(speedFilter);
 
   return (
     <div className="app">
       <Header />
 
       <div className="toolbar">
+        <ThemePicker themes={themes} value={themeId} onChange={setThemeId} />
         <NotificationButton permission={permission} onRequest={requestPermission} />
+        <button
+          className={`btn btn--ghost ${soundEnabled ? 'btn--on' : ''}`}
+          onClick={() => setSoundEnabled((v) => !v)}
+          aria-pressed={soundEnabled}
+        >
+          {soundEnabled ? '\u{1F50A} Sound on' : '\u{1F507} Sound off'}
+        </button>
+        {watched && (
+          <button className="btn btn--ghost" onClick={handleShare}>
+            {copied ? '✓ Copied' : '\u{1F517} Share'}
+          </button>
+        )}
         <button className="btn btn--ghost" onClick={handleRefresh} disabled={!watched}>
-          ⟳ Refresh now
+          {'⟳'} Refresh now
         </button>
       </div>
 
@@ -118,6 +213,14 @@ export default function App() {
 
       {watched ? (
         <>
+          <PerformanceTabs
+            perfs={profile?.perfs ?? {}}
+            speeds={availableSpeeds}
+            value={speedFilter}
+            onChange={setSpeedFilter}
+            loading={profileLoading}
+          />
+
           <div className="grid">
             <StatusCard
               username={watched}
@@ -127,9 +230,9 @@ export default function App() {
               error={statusState.error}
             />
             <CurrentGameCard status={statusState.status} gameDetectedAt={statusState.gameDetectedAt} />
-            <StatsCard title="Today" stats={dailyStats} loading={gamesState.loading} />
+            <StatsCard title={`Today · ${scopeLabel}`} stats={dailyStats} loading={gamesState.loading} />
             <StatsCard
-              title="Session"
+              title={`Session · ${scopeLabel}`}
               stats={sessionStats}
               loading={gamesState.loading}
               footer={
@@ -142,7 +245,12 @@ export default function App() {
             />
           </div>
 
-          <GamesTable games={gamesState.games} loading={gamesState.loading} error={gamesState.error} />
+          <div className="grid">
+            <InsightsCard games={filteredGames} />
+            <TrendCard games={filteredGames} scopeLabel={scopeLabel} />
+          </div>
+
+          <GamesTable games={filteredGames} loading={gamesState.loading} error={gamesState.error} />
         </>
       ) : (
         <section className="card">
@@ -157,7 +265,7 @@ export default function App() {
         <a href="https://lichess.org/api" target="_blank" rel="noopener noreferrer">
           Lichess API
         </a>
-        . For spectating and stats only — no engine analysis or move suggestions.
+        . For spectating and stats only, with no engine analysis or move suggestions.
       </footer>
     </div>
   );
@@ -173,14 +281,14 @@ function NotificationButton({ permission, onRequest }: NotificationButtonProps) 
     return <span className="notif-status notif-status--off">Notifications unsupported</span>;
   }
   if (permission === 'granted') {
-    return <span className="notif-status notif-status--on">🔔 Notifications on</span>;
+    return <span className="notif-status notif-status--on">{'\u{1F514}'} Notifications on</span>;
   }
   if (permission === 'denied') {
-    return <span className="notif-status notif-status--off">🔕 Notifications blocked</span>;
+    return <span className="notif-status notif-status--off">{'\u{1F515}'} Notifications blocked</span>;
   }
   return (
     <button className="btn btn--ghost" onClick={onRequest}>
-      🔔 Enable notifications
+      {'\u{1F514}'} Enable notifications
     </button>
   );
 }
