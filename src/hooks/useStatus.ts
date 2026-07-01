@@ -3,7 +3,7 @@ import { fetchStatus } from '../api/lichess';
 import type { UserStatus } from '../types';
 
 /** Poll interval. Kept >= 5s to respect Lichess rate limits. */
-const POLL_INTERVAL_MS = 7000;
+const POLL_INTERVAL_MS = 5000;
 
 export interface StatusState {
   status: UserStatus | null;
@@ -16,7 +16,7 @@ export interface StatusState {
 }
 
 /**
- * Polls a user's live status every ~7s. Tracks when the current game was first
+ * Polls a user's live status every 5s. Tracks when the current game was first
  * detected so the UI can show how long the game has been observed.
  */
 export function useStatus(username: string | null): StatusState {

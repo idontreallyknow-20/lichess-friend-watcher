@@ -5,6 +5,7 @@ import { useStatus } from './hooks/useStatus';
 import { useGames } from './hooks/useGames';
 import { useTheme } from './hooks/useTheme';
 import { computeStats, filterToday } from './utils/stats';
+import { computeSessions, currentSession } from './utils/sessions';
 
 import { Header } from './components/Header';
 import { ThemePicker } from './components/ThemePicker';
@@ -193,7 +194,12 @@ export default function App() {
     }
   }, []);
 
-  const dailyStats = useMemo(() => computeStats(filterToday(gamesState.games)), [gamesState.games]);
+  const todayGames = useMemo(() => filterToday(gamesState.games), [gamesState.games]);
+  const sessionGames = useMemo(() => {
+    const sessions = computeSessions(gamesState.games, sessionGapMin * 60 * 1000);
+    return currentSession(sessions)?.games ?? [];
+  }, [gamesState.games, sessionGapMin]);
+  const dailyStats = useMemo(() => computeStats(todayGames), [todayGames]);
   const isPlaying = statusState.status?.playing ?? false;
 
   return (
@@ -247,7 +253,11 @@ export default function App() {
                 loading={statusState.loading}
                 error={statusState.error}
               />
-              <CurrentGameCard status={statusState.status} gameDetectedAt={statusState.gameDetectedAt} />
+              <CurrentGameCard
+                username={watched}
+                status={statusState.status}
+                gameDetectedAt={statusState.gameDetectedAt}
+              />
               <StatsCard title="Today" stats={dailyStats} loading={gamesState.loading} />
               <SessionCard
                 games={gamesState.games}
@@ -268,7 +278,12 @@ export default function App() {
             />
           )}
 
-          {activePanel === 'insights' && <InsightsCard games={gamesState.games} />}
+          {activePanel === 'insights' && (
+            <div className="grid">
+              <InsightsCard title="Today insights" games={todayGames} />
+              <InsightsCard title="Session insights" games={sessionGames} />
+            </div>
+          )}
 
           {activePanel === 'trend' && <TrendCard games={gamesState.games} scopeLabel="all speeds" />}
 
@@ -379,8 +394,8 @@ function SettingsPanel({
         </button>
       </div>
       <p className="empty">
-        Mood and tilt use the latest detected session, recent losses, loss streaks, and Elo movement. The game
-        preview was removed because Lichess can block embedded live boards.
+        Mood and tilt use the latest detected session, recent losses, loss streaks, and Elo movement. Live status
+        stays simple so it works cleanly on mobile and desktop.
       </p>
     </section>
   );
