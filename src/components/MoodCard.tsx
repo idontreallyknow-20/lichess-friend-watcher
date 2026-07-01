@@ -10,6 +10,13 @@ interface MoodCardProps {
   loading: boolean;
 }
 
+interface TiltFactor {
+  label: string;
+  value: number;
+  caption: string;
+  helpful?: boolean;
+}
+
 function latestStreak(games: GameRecord[]): { type: GameResult | null; count: number } {
   const newest = [...games].sort((a, b) => b.endTime - a.endTime);
   const first = newest[0];
@@ -28,6 +35,26 @@ function clamp(value: number, min: number, max: number) {
 
 function pick(items: string[], seed: number) {
   return items[Math.abs(seed) % items.length];
+}
+
+function averageGapMinutes(games: GameRecord[]) {
+  const newest = [...games].sort((a, b) => b.endTime - a.endTime);
+  if (newest.length < 2) return null;
+
+  const gaps = newest.slice(0, 6).flatMap((game, index) => {
+    const next = newest[index + 1];
+    if (!next) return [];
+    return [Math.abs(game.endTime - next.endTime) / 60000];
+  });
+  if (gaps.length === 0) return null;
+  return gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length;
+}
+
+function tiltBand(score: number) {
+  if (score >= 78) return 'Critical';
+  if (score >= 56) return 'Volatile';
+  if (score >= 34) return 'Guarded';
+  return 'Stable';
 }
 
 function moodFor(score: number, stats: ReturnType<typeof computeStats>, streak: ReturnType<typeof latestStreak>) {
@@ -140,14 +167,31 @@ export function MoodCard({ games, gapMinutes, isPlaying, loading }: MoodCardProp
     const lossRate = stats.total ? stats.losses / stats.total : 0;
     const eloPenalty = stats.eloChange === null ? 0 : clamp(-stats.eloChange, 0, 45);
     const streakPenalty = streak.type === 'loss' ? Math.min(streak.count * 14, 42) : 0;
+    const drawDrag = stats.draws >= 2 && stats.wins === 0 ? 8 : 0;
+    const pace = averageGapMinutes(session.games);
+    const pacePenalty = pace !== null && pace <= 4 && stats.losses > 0 ? 10 : pace !== null && pace <= 8 ? 5 : 0;
     const winRelief = stats.wins > stats.losses ? Math.min((stats.wins - stats.losses) * 8, 22) : 0;
-    const score = clamp(Math.round(lossRate * 70 + eloPenalty + streakPenalty - winRelief), 0, 100);
+    const recoveryRelief = streak.type === 'win' ? Math.min(streak.count * 10, 26) : 0;
+    const pressure = clamp(Math.round(lossRate * 70 + drawDrag), 0, 100);
+    const score = clamp(
+      Math.round(pressure + eloPenalty + streakPenalty + pacePenalty - winRelief - recoveryRelief),
+      0,
+      100,
+    );
 
     return {
       ...moodFor(score, stats, streak),
       score,
       stats,
       streak,
+      factors: {
+        pressure,
+        streak: streakPenalty,
+        rating: eloPenalty,
+        pace: pacePenalty,
+        recovery: winRelief + recoveryRelief,
+      },
+      pace,
     };
   }, [games, gapMinutes]);
 
@@ -168,6 +212,30 @@ export function MoodCard({ games, gapMinutes, isPlaying, loading }: MoodCardProp
         : mood.score >= 34
           ? 'var(--accent)'
           : 'var(--win)';
+  const factors: TiltFactor[] = [
+    { label: 'Result pressure', value: mood.factors.pressure, caption: 'Loss share this session' },
+    {
+      label: 'Streak heat',
+      value: mood.factors.streak,
+      caption: mood.streak.type === 'loss' ? `${mood.streak.count} loss run` : 'No loss run',
+    },
+    {
+      label: 'Rating drag',
+      value: mood.factors.rating,
+      caption: mood.stats.eloChange === null ? 'No rating read' : `${mood.stats.eloChange} Elo`,
+    },
+    {
+      label: 'Pace risk',
+      value: mood.factors.pace,
+      caption: mood.pace === null ? 'One game sample' : `${Math.round(mood.pace)}m average gap`,
+    },
+    {
+      label: 'Recovery buffer',
+      value: mood.factors.recovery,
+      caption: mood.factors.recovery > 0 ? 'Wins are cooling it down' : 'No relief yet',
+      helpful: true,
+    },
+  ];
 
   return (
     <section className="card">
@@ -209,7 +277,9 @@ export function MoodCard({ games, gapMinutes, isPlaying, loading }: MoodCardProp
           style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: '0.78rem' }}
         >
           <span>Tilt meter</span>
-          <strong>{mood.score}%</strong>
+          <strong>
+            {tiltBand(mood.score)} - {mood.score}%
+          </strong>
         </div>
         <div
           className="tilt__track"
@@ -232,6 +302,51 @@ export function MoodCard({ games, gapMinutes, isPlaying, loading }: MoodCardProp
             }}
           />
         </div>
+      </div>
+
+      <div className="tilt-grid">
+        {factors.map((factor) => {
+          const meterColor = factor.helpful
+            ? 'var(--win)'
+            : factor.value >= 30
+              ? 'var(--loss)'
+              : factor.value >= 12
+                ? 'var(--draw)'
+                : 'var(--accent)';
+
+          return (
+            <div className="tilt-factor" key={factor.label}>
+              <div className="tilt-factor__head">
+                <span>{factor.label}</span>
+                <strong style={{ color: meterColor }}>{factor.value}</strong>
+              </div>
+              <div className="tilt-factor__bar" aria-hidden="true">
+                <span
+                  style={{
+                    width: `${clamp(factor.value, 0, 100)}%`,
+                    background: meterColor,
+                  }}
+                />
+              </div>
+              <span className="tilt-factor__caption">{factor.caption}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="tilt-footer">
+        <span>
+          <strong>{mood.stats.wins}</strong> wins
+        </span>
+        <span>
+          <strong>{mood.stats.losses}</strong> losses
+        </span>
+        <span>
+          <strong>{mood.stats.draws}</strong> draws
+        </span>
+        <span>
+          <strong>{mood.stats.total}</strong> games
+        </span>
       </div>
     </section>
   );

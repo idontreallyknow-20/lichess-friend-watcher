@@ -107,6 +107,24 @@ code {
   align-items: center;
   gap: 8px;
 }
+.theme-picker .btn {
+  white-space: nowrap;
+}
+.btn--upload {
+  position: relative;
+  overflow: hidden;
+}
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
 
 /* Appearance controls in the empty state (theme + background pickers). */
 .appearance {
@@ -476,6 +494,40 @@ code {
   font-size: 0.78rem;
   color: var(--text-muted);
 }
+.offline-status {
+  margin-top: 12px;
+}
+.last-played {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 10px;
+}
+.last-played__head,
+.last-played__result,
+.last-played__meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.last-played__head {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.last-played__result strong {
+  font-size: 1.25rem;
+}
+.last-played__result span,
+.last-played__meta {
+  color: var(--text-dim);
+  font-size: 0.86rem;
+}
 
 /* ---------- Stats ---------- */
 .stats-grid {
@@ -622,6 +674,61 @@ code {
 .streak__v {
   font-size: 1.1rem;
   font-weight: 700;
+}
+
+/* ---------- Tilt meter ---------- */
+.tilt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.tilt-factor {
+  border: 1px solid var(--border);
+  padding: 10px;
+  min-height: 88px;
+  display: grid;
+  align-content: space-between;
+  gap: 8px;
+  background: color-mix(in srgb, var(--bg-elev-2) 68%, transparent);
+}
+.tilt-factor__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.tilt-factor__head span {
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+.tilt-factor__head strong {
+  font-size: 0.9rem;
+}
+.tilt-factor__bar {
+  height: 6px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--bg-elev) 74%, transparent);
+}
+.tilt-factor__bar span {
+  display: block;
+  height: 100%;
+}
+.tilt-factor__caption {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  line-height: 1.35;
+}
+.tilt-footer {
+  border-top: 1px solid var(--border);
+  margin-top: 16px;
+  padding-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 10px;
+  font-size: 0.78rem;
 }
 
 /* ---------- Rating trend ---------- */

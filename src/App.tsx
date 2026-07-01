@@ -93,6 +93,24 @@ const BACKGROUNDS = [
     name: 'Plain',
     value: 'var(--bg)',
   },
+  {
+    id: 'midnight-board',
+    name: 'Midnight board',
+    value:
+      'linear-gradient(45deg, color-mix(in srgb, var(--bg-elev) 28%, transparent) 25%, transparent 25% 75%, color-mix(in srgb, var(--bg-elev) 28%, transparent) 75%), linear-gradient(45deg, color-mix(in srgb, var(--bg-elev) 28%, transparent) 25%, transparent 25% 75%, color-mix(in srgb, var(--bg-elev) 28%, transparent) 75%), radial-gradient(900px 520px at 80% 0%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 62%), var(--bg)',
+  },
+  {
+    id: 'time-scramble',
+    name: 'Time scramble',
+    value:
+      'conic-gradient(from 220deg at 82% 14%, color-mix(in srgb, var(--loss) 28%, transparent), transparent 24%, color-mix(in srgb, var(--draw) 22%, transparent), transparent 58%), radial-gradient(780px 540px at 8% 80%, color-mix(in srgb, var(--win) 18%, transparent), transparent 64%), var(--bg)',
+  },
+  {
+    id: 'neon-file',
+    name: 'Neon file',
+    value:
+      'repeating-linear-gradient(90deg, color-mix(in srgb, var(--border) 30%, transparent) 0 1px, transparent 1px 76px), radial-gradient(760px 460px at 74% 6%, color-mix(in srgb, var(--win) 20%, transparent), transparent 66%), radial-gradient(720px 520px at 15% 95%, color-mix(in srgb, var(--loss) 18%, transparent), transparent 62%), var(--bg)',
+  },
 ];
 
 type Panel = 'session' | 'tilt' | 'insights' | 'trend' | 'games' | 'settings';
@@ -113,6 +131,7 @@ export default function App() {
   const [watched, setWatched] = useLocalStorage<string | null>('lfw.selectedUsername', null);
   const [sessionGapMin, setSessionGapMin] = useLocalStorage<number>('lfw.sessionGap', 30);
   const [backgroundId, setBackgroundId] = useLocalStorage<string>('lfw.background', 'aurora');
+  const [customBackground, setCustomBackground] = useLocalStorage<string | null>('lfw.customBackground', null);
 
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -127,12 +146,19 @@ export default function App() {
   const profileState = useProfile(watched);
 
   useEffect(() => {
+    if (backgroundId === 'custom' && customBackground) {
+      document.body.style.background = `linear-gradient(180deg, color-mix(in srgb, var(--bg) 42%, transparent), color-mix(in srgb, var(--bg) 68%, transparent)), url("${customBackground}") center / cover fixed no-repeat`;
+      return () => {
+        document.body.style.background = '';
+      };
+    }
+
     const background = BACKGROUNDS.find((b) => b.id === backgroundId) ?? BACKGROUNDS[0];
     document.body.style.background = background.value;
     return () => {
       document.body.style.background = '';
     };
-  }, [backgroundId]);
+  }, [backgroundId, customBackground]);
 
   // Refetch games whenever a game starts or ends so the table stays current.
   const detectedAt = statusState.gameDetectedAt;
@@ -303,6 +329,7 @@ export default function App() {
                 username={watched}
                 status={statusState.status}
                 gameDetectedAt={statusState.gameDetectedAt}
+                games={gamesState.games}
               />
               <StatsCard title="Today" stats={dailyStats} loading={gamesState.loading} />
               <SessionCard
@@ -347,6 +374,8 @@ export default function App() {
               onThemeChange={setThemeId}
               backgroundId={backgroundId}
               onBackgroundChange={setBackgroundId}
+              customBackground={customBackground}
+              onCustomBackground={setCustomBackground}
               gapMinutes={sessionGapMin}
               onGapChange={setSessionGapMin}
               onRefresh={handleRefresh}
@@ -362,7 +391,12 @@ export default function App() {
           </p>
           <div className="appearance">
             <ThemePicker themes={themes} value={themeId} onChange={setThemeId} />
-            <BackgroundPicker value={backgroundId} onChange={setBackgroundId} />
+            <BackgroundPicker
+              value={backgroundId}
+              customBackground={customBackground}
+              onChange={setBackgroundId}
+              onCustomBackground={setCustomBackground}
+            />
           </div>
         </section>
       )}
@@ -463,18 +497,75 @@ function InsightsPanel({
   );
 }
 
-function BackgroundPicker({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+function BackgroundPicker({
+  value,
+  customBackground,
+  onChange,
+  onCustomBackground,
+}: {
+  value: string;
+  customBackground: string | null;
+  onChange: (id: string) => void;
+  onCustomBackground: (value: string | null) => void;
+}) {
+  const handleUpload = useCallback(
+    (file: File | null) => {
+      if (!file || !file.type.startsWith('image/')) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result !== 'string') return;
+        onCustomBackground(reader.result);
+        onChange('custom');
+      };
+      reader.readAsDataURL(file);
+    },
+    [onChange, onCustomBackground],
+  );
+
   return (
-    <label className="theme-picker">
-      <span className="theme-picker__label">Background</span>
-      <select className="select" value={value} onChange={(e) => onChange(e.target.value)} aria-label="Background">
+    <div className="theme-picker">
+      <label className="theme-picker__label" htmlFor="background-preset">
+        Background
+      </label>
+      <select
+        id="background-preset"
+        className="select"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label="Background"
+      >
         {BACKGROUNDS.map((background) => (
           <option key={background.id} value={background.id}>
             {background.name}
           </option>
         ))}
+        <option value="custom" disabled={!customBackground}>
+          Uploaded image
+        </option>
       </select>
-    </label>
+      <label className="btn btn--ghost btn--upload">
+        Upload background
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => handleUpload(e.target.files?.[0] ?? null)}
+          className="visually-hidden"
+        />
+      </label>
+      {customBackground && (
+        <button
+          className="btn btn--ghost"
+          type="button"
+          onClick={() => {
+            onCustomBackground(null);
+            if (value === 'custom') onChange('aurora');
+          }}
+        >
+          Clear upload
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -484,6 +575,8 @@ interface SettingsPanelProps {
   onThemeChange: (id: string) => void;
   backgroundId: string;
   onBackgroundChange: (id: string) => void;
+  customBackground: string | null;
+  onCustomBackground: (value: string | null) => void;
   gapMinutes: number;
   onGapChange: (minutes: number) => void;
   onRefresh: () => void;
@@ -497,6 +590,8 @@ function SettingsPanel({
   onThemeChange,
   backgroundId,
   onBackgroundChange,
+  customBackground,
+  onCustomBackground,
   gapMinutes,
   onGapChange,
   onRefresh,
@@ -511,7 +606,12 @@ function SettingsPanel({
         style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}
       >
         <ThemePicker themes={themes} value={themeId} onChange={onThemeChange} />
-        <BackgroundPicker value={backgroundId} onChange={onBackgroundChange} />
+        <BackgroundPicker
+          value={backgroundId}
+          customBackground={customBackground}
+          onChange={onBackgroundChange}
+          onCustomBackground={onCustomBackground}
+        />
         <label className="theme-picker">
           <span className="theme-picker__label">Session gap</span>
           <select className="select" value={gapMinutes} onChange={(e) => onGapChange(Number(e.target.value))}>

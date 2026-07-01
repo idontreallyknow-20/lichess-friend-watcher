@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { UserStatus } from '../types';
+import type { GameRecord, UserStatus } from '../types';
 import { fetchLiveGameSummary, type LiveGamePlayer, type LiveGameSummary } from '../api/lichess';
 import { formatDuration } from '../utils/format';
 import { useNow } from '../hooks/useNow';
@@ -8,6 +8,7 @@ interface CurrentGameCardProps {
   username: string;
   status: UserStatus | null;
   gameDetectedAt: number | null;
+  games: GameRecord[];
 }
 
 function sameUser(a: string, b: string) {
@@ -30,7 +31,25 @@ function matchupText(username: string, status: UserStatus | null, summary: LiveG
   return `${playerText(summary.white)} vs ${playerText(summary.black)}`;
 }
 
-export function CurrentGameCard({ username, status, gameDetectedAt }: CurrentGameCardProps) {
+function resultLabel(result: GameRecord['result']) {
+  if (result === 'win') return 'Won';
+  if (result === 'loss') return 'Lost';
+  return 'Drew';
+}
+
+function timeAgo(timestamp: number, now: number) {
+  const delta = Math.max(0, now - timestamp);
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (delta < minute) return 'just now';
+  if (delta < hour) return `${Math.floor(delta / minute)}m ago`;
+  if (delta < day) return `${Math.floor(delta / hour)}h ago`;
+  return `${Math.floor(delta / day)}d ago`;
+}
+
+export function CurrentGameCard({ username, status, gameDetectedAt, games }: CurrentGameCardProps) {
   const now = useNow(1000);
   const gameId = status?.playing ? status.playingId : null;
   const [summary, setSummary] = useState<LiveGameSummary | null>(null);
@@ -55,6 +74,7 @@ export function CurrentGameCard({ username, status, gameDetectedAt }: CurrentGam
 
   const liveLabel = useMemo(() => matchupText(username, status, summary), [username, status, summary]);
   const statusText = gameId ? 'Playing' : status?.online ? 'Online, not playing' : 'Offline';
+  const lastGame = useMemo(() => [...games].sort((a, b) => b.endTime - a.endTime)[0] ?? null, [games]);
 
   return (
     <section className="card card--game">
@@ -120,8 +140,47 @@ export function CurrentGameCard({ username, status, gameDetectedAt }: CurrentGam
           </a>
           <p className="game__note">Opens the live board on lichess.org. This app shows no moves or analysis.</p>
         </>
-      ) : (
+      ) : status?.online ? (
         <p className="empty">{statusText}</p>
+      ) : (
+        <div className="offline-status">
+          <p className="empty">{statusText}</p>
+          {lastGame ? (
+            <div className="last-played">
+              <div className="last-played__head">
+                <span>Last played</span>
+                <span>{timeAgo(lastGame.endTime, now)}</span>
+              </div>
+              <div className="last-played__result">
+                <strong
+                  className={
+                    lastGame.result === 'win'
+                      ? 'stat--positive'
+                      : lastGame.result === 'loss'
+                        ? 'stat--negative'
+                        : 'stat--neutral'
+                  }
+                >
+                  {resultLabel(lastGame.result)}
+                </strong>
+                <span>
+                  {lastGame.speed} vs {lastGame.opponent}
+                </span>
+              </div>
+              <div className="last-played__meta">
+                <span>{lastGame.timeControl}</span>
+                {lastGame.ratingDiff !== null && (
+                  <span className={lastGame.ratingDiff >= 0 ? 'stat--positive' : 'stat--negative'}>
+                    {lastGame.ratingDiff >= 0 ? '+' : ''}
+                    {lastGame.ratingDiff} rating
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="empty">No recent finished games found yet.</p>
+          )}
+        </div>
       )}
     </section>
   );
