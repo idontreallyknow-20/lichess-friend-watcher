@@ -108,6 +108,7 @@ export interface OpeningTableRow extends OpeningRecord {
   opponentWins: number;
   avgOpponent: number | null;
   lastPlayed: number;
+  lastGameId: string;
 }
 
 export interface DetailedInsights {
@@ -268,6 +269,7 @@ export function computeOpeningTable(games: GameRecord[]): OpeningTableRow[] {
         opponentTotal: 0,
         opponentCount: 0,
         lastPlayed: 0,
+        lastGameId: game.id,
       };
 
     if (game.result === 'win') rec.wins++;
@@ -288,7 +290,10 @@ export function computeOpeningTable(games: GameRecord[]): OpeningTableRow[] {
     }
 
     rec.total++;
-    rec.lastPlayed = Math.max(rec.lastPlayed, game.endTime);
+    if (game.endTime >= rec.lastPlayed) {
+      rec.lastPlayed = game.endTime;
+      rec.lastGameId = game.id;
+    }
     rec.winRate = rateOf(rec.wins, rec.draws, rec.total);
     openings.set(game.opening, rec);
   }

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { GameRecord } from '../types';
 import { computeOpeningTable, type OpeningTableRow } from '../utils/insights';
 
-type SortKey = 'popular' | 'best' | 'worst' | 'opponent' | 'recent';
+type SortKey = 'popular' | 'best' | 'worst' | 'white' | 'black' | 'opponent' | 'recent';
 type ColorSide = 'white' | 'black';
 
 function colorTotal(rec: OpeningTableRow['white']) {
@@ -59,12 +59,23 @@ export function OpeningsCard({ games }: { games: GameRecord[] }) {
   );
   const sorted = useMemo(() => {
     const rows = [...qualified];
+    const colorRows = (side: ColorSide) =>
+      rows
+        .filter((row) => colorTotal(row[side]) >= minGames)
+        .sort(
+          (a, b) =>
+            (rateFor(b[side]) ?? -1) - (rateFor(a[side]) ?? -1) ||
+            colorTotal(b[side]) - colorTotal(a[side]) ||
+            b.total - a.total,
+        );
     if (sort === 'best') return rows.sort((a, b) => b.winRate - a.winRate || b.total - a.total);
     if (sort === 'worst') return rows.sort((a, b) => a.winRate - b.winRate || b.total - a.total);
+    if (sort === 'white') return colorRows('white');
+    if (sort === 'black') return colorRows('black');
     if (sort === 'opponent') return rows.sort((a, b) => b.opponentWins - a.opponentWins || a.winRate - b.winRate);
     if (sort === 'recent') return rows.sort((a, b) => b.lastPlayed - a.lastPlayed);
     return rows;
-  }, [qualified, sort]);
+  }, [minGames, qualified, sort]);
 
   const favorite = openings[0] ?? null;
   const best = [...qualified].sort((a, b) => b.winRate - a.winRate || b.total - a.total)[0] ?? null;
@@ -85,6 +96,8 @@ export function OpeningsCard({ games }: { games: GameRecord[] }) {
               ['popular', 'Most played'],
               ['best', 'Best score'],
               ['worst', 'Worst score'],
+              ['white', 'As White'],
+              ['black', 'As Black'],
               ['opponent', 'Opponent success'],
               ['recent', 'Recent'],
             ].map(([id, label]) => (
@@ -173,7 +186,11 @@ export function OpeningsCard({ games }: { games: GameRecord[] }) {
                     <td>{rateFor(row.black) === null ? 'N/A' : `${rateFor(row.black)}%`}</td>
                     <td className={row.opponentWins > row.wins ? 'stat--negative' : ''}>{row.opponentWins}</td>
                     <td>{row.avgOpponent ?? 'N/A'}</td>
-                    <td>{lastPlayed(row.lastPlayed)}</td>
+                    <td>
+                      <a href={`https://lichess.org/${row.lastGameId}`} target="_blank" rel="noopener noreferrer">
+                        {lastPlayed(row.lastPlayed)}
+                      </a>
+                    </td>
                   </tr>
                 ))}
               </tbody>
