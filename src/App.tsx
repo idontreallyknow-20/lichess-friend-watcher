@@ -4,7 +4,6 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { useStatus } from './hooks/useStatus';
 import { useGames } from './hooks/useGames';
 import { useProfile } from './hooks/useProfile';
-import { useNotifications } from './hooks/useNotifications';
 import { useTheme } from './hooks/useTheme';
 import { computeStats, filterToday } from './utils/stats';
 import { orderSpeeds, speedLabel } from './utils/speeds';
@@ -19,6 +18,7 @@ import { CurrentGameCard } from './components/CurrentGameCard';
 import { StatsCard } from './components/StatsCard';
 import { SessionCard } from './components/SessionCard';
 import { InsightsCard } from './components/InsightsCard';
+import { MoodCard } from './components/MoodCard';
 import { TrendCard } from './components/TrendCard';
 import { GamesTable } from './components/GamesTable';
 
@@ -30,7 +30,6 @@ export default function App() {
   const [recent, setRecent] = useLocalStorage<string[]>('lfw.recentUsernames', []);
   const [watched, setWatched] = useLocalStorage<string | null>('lfw.selectedUsername', null);
   const [sessionGapMin, setSessionGapMin] = useLocalStorage<number>('lfw.sessionGap', 30);
-  const [soundEnabled, setSoundEnabled] = useLocalStorage<boolean>('lfw.sound', false);
 
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -43,10 +42,6 @@ export default function App() {
   const statusState = useStatus(watched);
   const gamesState = useGames(watched, refreshKey);
   const { profile, loading: profileLoading } = useProfile(watched);
-  const { permission, requestPermission, testNotification } = useNotifications(
-    statusState.status,
-    soundEnabled,
-  );
 
   // Refetch games whenever a game starts or ends so the table stays current.
   const detectedAt = statusState.gameDetectedAt;
@@ -112,7 +107,7 @@ export default function App() {
       document.title = base;
       return;
     }
-    if (s.playing) document.title = `● ${s.name} playing`;
+    if (s.playing) document.title = `${s.name} playing`;
     else if (s.online) document.title = `${s.name} online`;
     else document.title = `${s.name} offline`;
     return () => {
@@ -184,26 +179,13 @@ export default function App() {
 
       <div className="toolbar">
         <ThemePicker themes={themes} value={themeId} onChange={setThemeId} />
-        <NotificationButton permission={permission} onRequest={requestPermission} />
-        {permission === 'granted' && (
-          <button className="btn btn--ghost" onClick={() => testNotification(watched ?? undefined)}>
-            Test alert
-          </button>
-        )}
-        <button
-          className={`btn btn--ghost ${soundEnabled ? 'btn--on' : ''}`}
-          onClick={() => setSoundEnabled((v) => !v)}
-          aria-pressed={soundEnabled}
-        >
-          {soundEnabled ? '\u{1F50A} Sound on' : '\u{1F507} Sound off'}
-        </button>
         {watched && (
           <button className="btn btn--ghost" onClick={handleShare}>
-            {copied ? '✓ Copied' : '\u{1F517} Share'}
+            {copied ? 'Copied' : 'Share'}
           </button>
         )}
         <button className="btn btn--ghost" onClick={handleRefresh} disabled={!watched}>
-          {'⟳'} Refresh now
+          Refresh now
         </button>
       </div>
 
@@ -235,7 +217,7 @@ export default function App() {
               error={statusState.error}
             />
             <CurrentGameCard status={statusState.status} gameDetectedAt={statusState.gameDetectedAt} />
-            <StatsCard title={`Today · ${scopeLabel}`} stats={dailyStats} loading={gamesState.loading} />
+            <StatsCard title={`Today - ${scopeLabel}`} stats={dailyStats} loading={gamesState.loading} />
             <SessionCard
               games={gamesState.games}
               gapMinutes={sessionGapMin}
@@ -247,6 +229,12 @@ export default function App() {
 
           <div className="grid">
             <InsightsCard games={filteredGames} />
+            <MoodCard
+              games={gamesState.games}
+              gapMinutes={sessionGapMin}
+              isPlaying={isPlaying}
+              loading={gamesState.loading}
+            />
             <TrendCard games={filteredGames} scopeLabel={scopeLabel} />
           </div>
 
@@ -268,27 +256,5 @@ export default function App() {
         . For spectating and stats only, with no engine analysis or move suggestions.
       </footer>
     </div>
-  );
-}
-
-interface NotificationButtonProps {
-  permission: NotificationPermission | 'unsupported';
-  onRequest: () => void;
-}
-
-function NotificationButton({ permission, onRequest }: NotificationButtonProps) {
-  if (permission === 'unsupported') {
-    return <span className="notif-status notif-status--off">Notifications unsupported</span>;
-  }
-  if (permission === 'granted') {
-    return <span className="notif-status notif-status--on">{'\u{1F514}'} Notifications on</span>;
-  }
-  if (permission === 'denied') {
-    return <span className="notif-status notif-status--off">{'\u{1F515}'} Notifications blocked</span>;
-  }
-  return (
-    <button className="btn btn--ghost" onClick={onRequest}>
-      {'\u{1F514}'} Enable notifications
-    </button>
   );
 }
