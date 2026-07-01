@@ -249,23 +249,25 @@ export default function App() {
     <div className="app">
       <Header />
 
-      <div className="toolbar">
-        <ThemePicker themes={themes} value={themeId} onChange={setThemeId} />
-        <BackgroundPicker value={backgroundId} onChange={setBackgroundId} />
-        {canInstall && (
-          <button className="btn btn--primary" onClick={install} title="Install as an app on your device">
-            Install app
-          </button>
-        )}
-        {watched && (
-          <button className="btn btn--ghost" onClick={handleShare}>
-            {copied ? 'Copied' : 'Share'}
-          </button>
-        )}
-        <button className="btn btn--ghost" onClick={handleRefresh} disabled={!watched}>
-          Refresh now
-        </button>
-      </div>
+      {(watched || canInstall) && (
+        <div className="toolbar">
+          {canInstall && (
+            <button className="btn btn--primary" onClick={install} title="Install as an app on your device">
+              Install app
+            </button>
+          )}
+          {watched && (
+            <>
+              <button className="btn btn--ghost" onClick={handleShare}>
+                {copied ? 'Copied' : 'Share'}
+              </button>
+              <button className="btn btn--ghost" onClick={handleRefresh}>
+                Refresh now
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       <SearchBar onSubmit={handleWatch} loading={searchLoading} error={searchError} />
 
@@ -356,9 +358,13 @@ export default function App() {
         </>
       ) : (
         <section className="card">
-          <p className="empty">
+          <p className="empty" style={{ marginTop: 0 }}>
             Enter a Lichess username above to start watching their status and stats.
           </p>
+          <div className="appearance">
+            <ThemePicker themes={themes} value={themeId} onChange={setThemeId} />
+            <BackgroundPicker value={backgroundId} onChange={setBackgroundId} />
+          </div>
         </section>
       )}
 
