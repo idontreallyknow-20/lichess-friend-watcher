@@ -70,12 +70,6 @@ function randomSpecialInterval() {
   return 3 + Math.floor(Math.random() * 3);
 }
 
-function formatScore(stats) {
-  const bits = [`${stats.wins}W`, `${stats.losses}L`];
-  if (stats.draws) bits.push(`${stats.draws}D`);
-  return bits.join(' ');
-}
-
 function profileGames(games) {
   return games.reduce(
     (stats, game) => {
@@ -100,59 +94,92 @@ function currentStreak(games) {
   return { result: last.result, count };
 }
 
+function signed(value) {
+  return value > 0 ? `+${value}` : String(value);
+}
+
+function ratingSummary(games) {
+  const latestRated = [...games].reverse().find((game) => typeof game.ratingAfter === 'number');
+  const diffs = games
+    .map((game) => game.ratingDiff)
+    .filter((diff) => typeof diff === 'number');
+
+  if (!latestRated && diffs.length === 0) return '';
+
+  const delta = diffs.length ? diffs.reduce((sum, diff) => sum + diff, 0) : null;
+  if (latestRated && delta !== null) return ` Rating: ${latestRated.ratingAfter} (${signed(delta)}).`;
+  if (latestRated) return ` Rating: ${latestRated.ratingAfter}.`;
+  return ` Rating change: ${signed(delta)}.`;
+}
+
 function recapMessage(name, games) {
   const stats = profileGames(games);
-  const score = formatScore(stats);
+  const rating = ratingSummary(games);
   const intro =
-    stats.wins >= 4
+    stats.wins === 5
       ? pick([
-          `${name} is moving different right now`,
-          `Okay ${name} might be locked in for real`,
-          `${name} just put together a tiny highlight reel`,
-          `The board is being treated unfairly by ${name}`,
-          `${name} is cooking and the kitchen is open`,
-          `This is not casual anymore, ${name} is on one`,
-          `${name} is playing like the pieces owe rent`,
-          `Small sample size, huge main character energy from ${name}`,
+          `${name} just swept the whole batch. Absurd behavior`,
+          `${name} is fully in raid boss mode right now`,
+          `${name} turned the last five games into a highlight reel`,
+          `${name} is playing like the board personally apologized`,
+          `${name} is on fire and the smoke detector is tired`,
+          `${name} just made winning look like a setting you toggle on`,
         ])
-      : stats.losses >= 4
+      : stats.wins === 4
         ? pick([
-            `${name} is having one of those character-building stretches`,
-            `Not gonna lie, ${name} may need a water break`,
-            `${name} is donating rating with suspicious generosity`,
-            `The vibes are fighting for their life in ${name}'s lobby`,
-            `${name} is in the trenches but the trenches build lore`,
-            `Someone check on ${name}, the board has been rude`,
-            `${name} is speedrunning the pain arc`,
-            `This batch was a little haunted for ${name}`,
+            `${name} is doing crazy work right now`,
+            `${name} is mostly bullying the scoreboard at this point`,
+            `${name} is looking dangerous, like genuinely annoying to play`,
+            `${name} just put together a nasty little run`,
+            `${name} is stacking wins like the lobby forgot to resist`,
+            `${name} is giving confident, slightly illegal momentum`,
           ])
-        : stats.wins > stats.losses
+        : stats.wins === 3 && stats.losses <= 2
           ? pick([
-              `${name} is quietly stacking good results`,
-              `Solid little run from ${name}`,
-              `${name} has the momentum doing pushups`,
-              `Respectable batch from ${name}, no drama needed`,
-              `${name} is winning more than losing and that is the plot`,
-              `The scoreboard is nodding politely at ${name}`,
+              `${name} is edging ahead and the vibes are positive`,
+              `${name} is doing pretty well, not flawless but definitely cooking`,
+              `${name} is winning the argument with variance right now`,
+              `${name} has the scoreboard leaning in the right direction`,
+              `${name} is having a solid stretch with just enough chaos`,
+              `${name} is up overall, which is all the drama we need`,
             ])
-          : stats.losses > stats.wins
+          : stats.losses === 5
             ? pick([
-                `${name} is getting tested by the chess universe`,
-                `Rough patch for ${name}, but the comeback script is loading`,
-                `${name} is absorbing lessons at high speed`,
-                `The board is being deeply unserious to ${name}`,
-                `${name} took a few hits, still watching the bounceback`,
-                `This stretch is spicy in the wrong direction for ${name}`,
+                `${name} just ate five rough ones. That is a reset-button situation`,
+                `${name} is in the pain cave right now`,
+                `${name} is taking a historic amount of emotional damage`,
+                `${name} needs water, posture, and maybe a totally different queue`,
+                `${name} is speedrunning the villain origin story`,
+                `${name} is getting cooked so hard the kitchen filed paperwork`,
               ])
-            : pick([
-                `${name} is keeping it perfectly chaotic`,
-                `Dead even batch from ${name}, maximum suspense`,
-                `${name} is giving balance, mystery, and mild stress`,
-                `The scoreboard cannot decide what genre ${name} is in`,
-                `${name} is basically arguing with variance right now`,
-              ]);
+            : stats.losses === 4
+              ? pick([
+                  `${name} is having a rough stretch, not gonna lie`,
+                  `${name} might be entering tilt country`,
+                  `${name} is donating rating with concerning generosity`,
+                  `${name} is getting tested by the chess universe`,
+                  `${name} needs a breather before the board starts charging rent`,
+                  `${name} is in a slump, but the comeback arc is available`,
+                ])
+              : stats.losses === 3 && stats.wins <= 2
+                ? pick([
+                    `${name} is a little underwater right now`,
+                    `${name} is not doomed, but the vibes are sweating`,
+                    `${name} is losing the small sample size argument`,
+                    `${name} took a few hits, nothing fatal but definitely spicy`,
+                    `${name} is wobbling a bit, the next batch matters`,
+                    `${name} is learning loudly right now`,
+                  ])
+                : pick([
+                    `${name} is keeping it basically even and very annoying to predict`,
+                    `${name} is living in maximum suspense mode`,
+                    `${name} is balanced right now, somehow both fine and stressful`,
+                    `${name} is giving coin flip cinema`,
+                    `${name} and the scoreboard are currently negotiating`,
+                    `${name} is neither cooking nor cooked, just simmering`,
+                  ]);
 
-  return `${intro}. Last ${stats.total}: ${score}.`;
+  return `${intro}.${rating}`;
 }
 
 function specialMessage(name, games) {
@@ -281,6 +308,8 @@ function parseGame(raw) {
   else if (blackName === lname) color = 'black';
   else return null;
 
+  const me = color === 'white' ? white : black;
+
   let result;
   if (raw.winner === 'white' || raw.winner === 'black') {
     result = raw.winner === color ? 'win' : 'loss';
@@ -291,6 +320,8 @@ function parseGame(raw) {
   return {
     id: raw.id,
     result,
+    ratingAfter: typeof me?.rating === 'number' ? me.rating : null,
+    ratingDiff: typeof me?.ratingDiff === 'number' ? me.ratingDiff : null,
     endTime: raw.lastMoveAt ?? raw.createdAt ?? 0,
   };
 }
