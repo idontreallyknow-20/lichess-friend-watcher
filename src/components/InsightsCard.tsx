@@ -3,6 +3,7 @@ import type { GameRecord } from '../types';
 import { computeInsights, type ColorRecord } from '../utils/insights';
 
 interface InsightsCardProps {
+  title?: string;
   /** Games newest-first. */
   games: GameRecord[];
 }
@@ -47,7 +48,7 @@ function ColorRow({ label, rec }: { label: string; rec: ColorRecord }) {
   );
 }
 
-export function InsightsCard({ games }: InsightsCardProps) {
+export function InsightsCard({ title = 'Insights', games }: InsightsCardProps) {
   const insights = useMemo(() => computeInsights(games), [games]);
   const { currentStreak } = insights;
 
@@ -77,7 +78,7 @@ export function InsightsCard({ games }: InsightsCardProps) {
 
   return (
     <section className="card">
-      <h2 className="card__title">Insights</h2>
+      <h2 className="card__title">{title}</h2>
 
       {games.length === 0 ? (
         <p className="empty">No games in this view yet.</p>
