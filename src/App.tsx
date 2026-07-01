@@ -3,10 +3,13 @@ import { validateUser } from './api/lichess';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useStatus } from './hooks/useStatus';
 import { useGames } from './hooks/useGames';
+import { useProfile } from './hooks/useProfile';
 import { useTheme } from './hooks/useTheme';
-import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { computeStats, filterToday } from './utils/stats';
 import { computeSessions, currentSession } from './utils/sessions';
+import { filterBySpeed } from './utils/insights';
+import { orderSpeeds, speedLabel } from './utils/speeds';
+import type { GameRecord, Profile } from './types';
 
 import { Header } from './components/Header';
 import { ThemePicker } from './components/ThemePicker';
@@ -17,6 +20,8 @@ import { CurrentGameCard } from './components/CurrentGameCard';
 import { StatsCard } from './components/StatsCard';
 import { SessionCard } from './components/SessionCard';
 import { InsightsCard } from './components/InsightsCard';
+import { AllTimeCard } from './components/AllTimeCard';
+import { InstallButton } from './components/InstallButton';
 import { MoodCard } from './components/MoodCard';
 import { TrendCard } from './components/TrendCard';
 import { GamesTable } from './components/GamesTable';
@@ -103,7 +108,6 @@ const PANELS: { id: Panel; label: string }[] = [
 
 export default function App() {
   const { themeId, setThemeId, themes } = useTheme();
-  const { canInstall, install } = useInstallPrompt();
 
   const [recent, setRecent] = useLocalStorage<string[]>('lfw.recentUsernames', []);
   const [watched, setWatched] = useLocalStorage<string | null>('lfw.selectedUsername', null);
@@ -120,6 +124,7 @@ export default function App() {
 
   const statusState = useStatus(watched);
   const gamesState = useGames(watched, refreshKey);
+  const profileState = useProfile(watched);
 
   useEffect(() => {
     const background = BACKGROUNDS.find((b) => b.id === backgroundId) ?? BACKGROUNDS[0];
@@ -247,25 +252,16 @@ export default function App() {
 
   return (
     <div className="app">
-      <Header />
+      <Header action={<InstallButton />} />
 
-      {(watched || canInstall) && (
+      {watched && (
         <div className="toolbar">
-          {canInstall && (
-            <button className="btn btn--primary" onClick={install} title="Install as an app on your device">
-              Install app
-            </button>
-          )}
-          {watched && (
-            <>
-              <button className="btn btn--ghost" onClick={handleShare}>
-                {copied ? 'Copied' : 'Share'}
-              </button>
-              <button className="btn btn--ghost" onClick={handleRefresh}>
-                Refresh now
-              </button>
-            </>
-          )}
+          <button className="btn btn--ghost" onClick={handleShare}>
+            {copied ? 'Copied' : 'Share'}
+          </button>
+          <button className="btn btn--ghost" onClick={handleRefresh}>
+            Refresh now
+          </button>
         </div>
       )}
 
@@ -329,10 +325,13 @@ export default function App() {
           )}
 
           {activePanel === 'insights' && (
-            <div className="grid">
-              <InsightsCard title="Today insights" games={todayGames} />
-              <InsightsCard title="Session insights" games={sessionGames} />
-            </div>
+            <InsightsPanel
+              recentGames={gamesState.games}
+              todayGames={todayGames}
+              sessionGames={sessionGames}
+              perfs={profileState.profile?.perfs ?? {}}
+              profileLoading={profileState.loading}
+            />
           )}
 
           {activePanel === 'trend' && <TrendCard games={gamesState.games} scopeLabel="all speeds" />}
@@ -375,6 +374,91 @@ export default function App() {
         </a>
         . For spectating and stats only, with no engine analysis or move suggestions.
       </footer>
+    </div>
+  );
+}
+
+type Scope = 'recent' | 'today' | 'session';
+
+const SCOPES: { id: Scope; label: string }[] = [
+  { id: 'recent', label: 'Recent' },
+  { id: 'today', label: 'Today' },
+  { id: 'session', label: 'Session' },
+];
+
+interface InsightsPanelProps {
+  recentGames: GameRecord[];
+  todayGames: GameRecord[];
+  sessionGames: GameRecord[];
+  perfs: Profile['perfs'];
+  profileLoading: boolean;
+}
+
+function InsightsPanel({
+  recentGames,
+  todayGames,
+  sessionGames,
+  perfs,
+  profileLoading,
+}: InsightsPanelProps) {
+  const [scope, setScope] = useState<Scope>('recent');
+  const [speed, setSpeed] = useState<string>('all');
+
+  // Speeds offered come from the player's rated perfs plus any speed seen in the
+  // recent games, so the filter only ever lists things that have data.
+  const speeds = useMemo(() => {
+    const keys = new Set<string>();
+    for (const k of Object.keys(perfs)) {
+      if ((perfs[k]?.games ?? 0) > 0) keys.add(k);
+    }
+    for (const g of recentGames) keys.add(g.speed);
+    return orderSpeeds(keys);
+  }, [perfs, recentGames]);
+
+  const baseGames = scope === 'today' ? todayGames : scope === 'session' ? sessionGames : recentGames;
+  const games = useMemo(() => filterBySpeed(baseGames, speed), [baseGames, speed]);
+
+  const scopeLabel = SCOPES.find((s) => s.id === scope)?.label ?? 'Recent';
+  const speedText = speed === 'all' ? 'All speeds' : speedLabel(speed);
+  const title = `${speedText} · ${scopeLabel}`;
+
+  return (
+    <div className="insights-panel">
+      <div className="insights-controls">
+        <div className="seg" role="tablist" aria-label="Speed">
+          <button
+            className={`seg__btn ${speed === 'all' ? 'seg__btn--active' : ''}`}
+            onClick={() => setSpeed('all')}
+          >
+            All
+          </button>
+          {speeds.map((s) => (
+            <button
+              key={s}
+              className={`seg__btn ${speed === s ? 'seg__btn--active' : ''}`}
+              onClick={() => setSpeed(s)}
+            >
+              {speedLabel(s)}
+            </button>
+          ))}
+        </div>
+        <div className="seg" role="tablist" aria-label="Scope">
+          {SCOPES.map((s) => (
+            <button
+              key={s.id}
+              className={`seg__btn ${scope === s.id ? 'seg__btn--active' : ''}`}
+              onClick={() => setScope(s.id)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid">
+        <AllTimeCard perfs={perfs} speed={speed} loading={profileLoading} />
+        <InsightsCard title={title} games={games} />
+      </div>
     </div>
   );
 }

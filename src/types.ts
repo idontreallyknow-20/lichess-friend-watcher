@@ -17,12 +17,16 @@ export type GameResult = 'win' | 'loss' | 'draw';
 export interface GameRecord {
   id: string;
   opponent: string;
+  /** Opponent's rating in this game, if available. */
+  opponentRating: number | null;
   color: GameColor;
   result: GameResult;
   /** Rating delta for the watched user. null when unavailable (casual / missing). */
   ratingDiff: number | null;
   /** Watched user's rating in this game, if available. */
   ratingAfter: number | null;
+  /** Opening name (e.g. "Sicilian Defense"), if the export provided one. */
+  opening: string | null;
   rated: boolean;
   /** Human-readable time control, e.g. "5+3" or "Correspondence". */
   timeControl: string;

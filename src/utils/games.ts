@@ -74,14 +74,21 @@ export function parseGame(raw: any, username: string): GameRecord | null {
   const ratingDiff =
     rated && typeof me?.ratingDiff === 'number' ? me.ratingDiff : null;
   const ratingAfter = typeof me?.rating === 'number' ? me.rating : null;
+  const opponentRating = typeof them?.rating === 'number' ? them.rating : null;
+  const opening =
+    typeof raw?.opening?.name === 'string' && raw.opening.name.trim()
+      ? raw.opening.name
+      : null;
 
   return {
     id: raw.id,
     opponent,
+    opponentRating,
     color,
     result,
     ratingDiff,
     ratingAfter,
+    opening,
     rated,
     timeControl: formatTimeControl(raw),
     speed: typeof raw.speed === 'string' ? raw.speed : 'unknown',

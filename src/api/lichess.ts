@@ -123,7 +123,7 @@ export async function fetchRecentGames(
     pgnInJson: 'false',
     clocks: 'false',
     evals: 'false',
-    opening: 'false',
+    opening: 'true',
     sort: 'dateDesc',
   });
   const res = await fetch(`${BASE}/api/games/user/${encodeURIComponent(username)}?${params}`, {

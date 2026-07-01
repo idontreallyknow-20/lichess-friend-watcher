@@ -1,4 +1,6 @@
-export function Header() {
+import type { ReactNode } from 'react';
+
+export function Header({ action }: { action?: ReactNode }) {
   return (
     <header className="header">
       <div className="header__brand">
@@ -10,6 +12,7 @@ export function Header() {
           </p>
         </div>
       </div>
+      {action && <div className="header__action">{action}</div>}
     </header>
   );
 }

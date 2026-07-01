@@ -749,6 +749,221 @@ code {
   padding-top: 8px;
 }
 
+/* ---------- Header action / install button ---------- */
+.header__action {
+  position: relative;
+  flex-shrink: 0;
+}
+.btn--sm {
+  padding: 7px 12px;
+  font-size: 0.82rem;
+}
+.install {
+  position: relative;
+}
+.install__help {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 20;
+  width: 260px;
+  padding: 12px 14px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+}
+.install__help-text {
+  margin: 0 0 10px;
+  font-size: 0.86rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+.install__help-text strong {
+  color: var(--text);
+}
+
+/* ---------- Insights: controls, metrics, openings ---------- */
+.insights-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.insights-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  align-items: center;
+}
+.seg {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+}
+.seg__btn {
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.84rem;
+  padding: 7px 12px;
+  min-height: 36px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.seg__btn:hover {
+  color: var(--text);
+}
+.seg__btn--active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+  color: var(--accent-hover);
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+}
+.metric__k {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.metric__v {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.outcome-split {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.openings {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+.openings__title {
+  margin: 0 0 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+.opening-row {
+  display: grid;
+  grid-template-columns: 84px 1fr auto;
+  align-items: baseline;
+  gap: 10px;
+  padding: 6px 0;
+}
+.opening-row + .opening-row {
+  border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+.opening-row__label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+.opening-row__name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.opening-row__rate {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---------- All-time card ---------- */
+.alltime {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px 32px;
+  align-items: flex-end;
+}
+.alltime__main {
+  display: flex;
+  flex-direction: column;
+}
+.alltime__rating {
+  font-size: 2.4rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.alltime__prov {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  vertical-align: super;
+}
+.alltime__label {
+  margin-top: 5px;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.alltime__meta {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.alltime-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 8px;
+}
+.alltime-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 10px;
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border);
+}
+.alltime-cell__rating {
+  font-size: 1.4rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.alltime-cell__label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--accent-hover);
+}
+.alltime-cell__games {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 720px) {
   /* Even, tidy control grid instead of ragged wrapping. */
@@ -839,6 +1054,24 @@ code {
     gap: 18px;
   }
 
+  .insights-controls {
+    gap: 10px;
+  }
+  .seg {
+    width: 100%;
+  }
+  .seg__btn {
+    flex: 1 1 auto;
+    text-align: center;
+  }
+  .opening-row {
+    grid-template-columns: 68px 1fr auto;
+    gap: 8px;
+  }
+  .install__help {
+    width: min(80vw, 260px);
+  }
+
   /* Comfortable tap targets on touch screens. */
   .btn,
   .search__input,
@@ -853,5 +1086,8 @@ code {
   }
   .toolbar {
     grid-template-columns: 1fr;
+  }
+  .metric-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
