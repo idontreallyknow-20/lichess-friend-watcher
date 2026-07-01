@@ -59,6 +59,8 @@ function moodFor(score: number, stats: ReturnType<typeof computeStats>, streak: 
   };
 }
 
+const GAUGE_TICKS = [0, 20, 40, 60, 80, 100];
+
 export function MoodCard({ games, gapMinutes, isPlaying, loading }: MoodCardProps) {
   const mood = useMemo(() => {
     const sessions = computeSessions(games, gapMinutes * 60 * 1000);
@@ -90,8 +92,7 @@ export function MoodCard({ games, gapMinutes, isPlaying, loading }: MoodCardProp
     );
   }
 
-  const tiltClass =
-    mood.score >= 78 ? 'tilt--red' : mood.score >= 56 ? 'tilt--orange' : mood.score >= 34 ? 'tilt--yellow' : 'tilt--green';
+  const needleAngle = -126 + mood.score * 2.52;
 
   return (
     <section className="card">
@@ -127,40 +128,72 @@ export function MoodCard({ games, gapMinutes, isPlaying, loading }: MoodCardProp
         </span>
       </div>
 
-      <div className="tilt" style={{ marginTop: 18 }}>
+      <div
+        className="tilt-gauge"
+        style={{
+          marginTop: 18,
+          background:
+            'radial-gradient(circle at 50% 78%, #1b1515 0 10%, transparent 11%), linear-gradient(145deg, color-mix(in srgb, var(--loss) 36%, var(--bg-elev)), var(--bg-elev-2))',
+          border: '1px solid var(--border)',
+          padding: 12,
+          boxShadow: 'inset 0 0 18px rgba(0, 0, 0, 0.25)',
+        }}
+      >
+        <svg viewBox="0 0 320 190" role="img" aria-label={`Tilt meter ${mood.score}%`} style={{ width: '100%', display: 'block' }}>
+          <path d="M42 154 A118 118 0 0 1 278 154" fill="#f7f1d8" stroke="rgba(0,0,0,0.35)" strokeWidth="8" />
+          <path d="M52 150 A108 108 0 0 1 268 150" fill="none" stroke="rgba(0,0,0,0.18)" strokeWidth="2" />
+          <path d="M214 76 A90 90 0 0 1 268 150" fill="none" stroke="rgba(224,82,75,0.45)" strokeWidth="20" />
+          {GAUGE_TICKS.map((tick) => {
+            const angle = (-126 + tick * 2.52) * (Math.PI / 180);
+            const outerX = 160 + Math.cos(angle) * 108;
+            const outerY = 154 + Math.sin(angle) * 108;
+            const innerX = 160 + Math.cos(angle) * 88;
+            const innerY = 154 + Math.sin(angle) * 88;
+            const labelX = 160 + Math.cos(angle) * 70;
+            const labelY = 154 + Math.sin(angle) * 70;
+            return (
+              <g key={tick}>
+                <line x1={innerX} y1={innerY} x2={outerX} y2={outerY} stroke="#333" strokeWidth="3" />
+                <text
+                  x={labelX}
+                  y={labelY + 5}
+                  textAnchor="middle"
+                  fontSize="17"
+                  fontWeight="800"
+                  fill="#3b3b36"
+                >
+                  {tick}
+                </text>
+              </g>
+            );
+          })}
+          {Array.from({ length: 41 }, (_, i) => i * 2.5).map((tick) => {
+            const angle = (-126 + tick * 2.52) * (Math.PI / 180);
+            const outerX = 160 + Math.cos(angle) * 107;
+            const outerY = 154 + Math.sin(angle) * 107;
+            const innerX = 160 + Math.cos(angle) * (tick % 10 === 0 ? 94 : 100);
+            const innerY = 154 + Math.sin(angle) * (tick % 10 === 0 ? 94 : 100);
+            return <line key={tick} x1={innerX} y1={innerY} x2={outerX} y2={outerY} stroke="#333" strokeWidth="1" />;
+          })}
+          <text x="160" y="98" textAnchor="middle" fontSize="34" fontWeight="900" fill="var(--loss)">
+            TILT
+          </text>
+          <text x="160" y="122" textAnchor="middle" fontSize="16" fontWeight="700" fill="#6d625b">
+            MOOD METER
+          </text>
+          <g transform={`rotate(${needleAngle} 160 154)`}>
+            <line x1="160" y1="154" x2="255" y2="154" stroke="var(--loss)" strokeWidth="6" strokeLinecap="round" />
+            <path d="M263 154 L246 144 L246 164 Z" fill="var(--loss)" />
+          </g>
+          <circle cx="160" cy="154" r="22" fill="#292522" stroke="#090909" strokeWidth="4" />
+          <path d="M36 154 H284 V188 H36 Z" fill="color-mix(in srgb, var(--loss) 45%, #3a1010)" opacity="0.92" />
+        </svg>
         <div
           className="tilt__top"
-          style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 7, fontSize: '0.78rem' }}
+          style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: '0.78rem' }}
         >
           <span>Tilt meter</span>
           <strong>{mood.score}%</strong>
-        </div>
-        <div
-          className="tilt__track"
-          aria-hidden="true"
-          style={{
-            height: 12,
-            border: '1px solid var(--border)',
-            background: 'linear-gradient(90deg, var(--win), var(--draw), var(--loss))',
-            overflow: 'hidden',
-          }}
-        >
-          <span
-            className={`tilt__fill ${tiltClass}`}
-            style={{
-              display: 'block',
-              width: `${mood.score}%`,
-              height: '100%',
-              background:
-                mood.score >= 78
-                  ? 'var(--loss)'
-                  : mood.score >= 56
-                    ? 'color-mix(in srgb, var(--loss) 65%, var(--draw))'
-                    : mood.score >= 34
-                      ? 'var(--draw)'
-                      : 'var(--win)',
-            }}
-          />
         </div>
       </div>
     </section>
