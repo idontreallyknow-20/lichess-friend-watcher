@@ -14,6 +14,8 @@ export interface InstallPromptState {
   canInstall: boolean;
   /** True when the app is already running as an installed PWA. */
   installed: boolean;
+  /** iOS Safari can't fire an install prompt — the user must add it manually. */
+  iosSafari: boolean;
   /** Triggers the native install prompt. Resolves once the user has chosen. */
   install: () => Promise<void>;
 }
@@ -23,6 +25,16 @@ function isStandalone(): boolean {
   // iOS Safari exposes `navigator.standalone`; everyone else uses the media query.
   const iosStandalone = (window.navigator as unknown as { standalone?: boolean }).standalone;
   return window.matchMedia('(display-mode: standalone)').matches || iosStandalone === true;
+}
+
+function isIosSafari(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  const isIos = /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && 'ontouchend' in document);
+  // Exclude Chrome/Firefox/Edge on iOS (they can't install either, but the hint
+  // about the Share menu only applies to Safari's UI).
+  const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
+  return isIos && isSafari;
 }
 
 /**
@@ -61,5 +73,10 @@ export function useInstallPrompt(): InstallPromptState {
     if (choice.outcome === 'accepted') setInstalled(true);
   }, [deferred]);
 
-  return { canInstall: deferred !== null && !installed, installed, install };
+  return {
+    canInstall: deferred !== null && !installed,
+    installed,
+    iosSafari: isIosSafari(),
+    install,
+  };
 }

@@ -78,3 +78,159 @@ export function winRate(rec: ColorRecord): number | null {
   if (total === 0) return null;
   return Math.round(((rec.wins + rec.draws * 0.5) / total) * 100);
 }
+
+/** Keep only games of a given Lichess speed. `'all'` returns everything. */
+export function filterBySpeed(games: GameRecord[], speed: string): GameRecord[] {
+  if (speed === 'all') return games;
+  return games.filter((g) => g.speed === speed);
+}
+
+/** Aggregate performance in a single opening. */
+export interface OpeningRecord {
+  name: string;
+  wins: number;
+  losses: number;
+  draws: number;
+  total: number;
+  /** Win rate 0-100, draws counted as half. */
+  winRate: number;
+}
+
+/** A single game highlighted for a rating swing. */
+export interface RatingHighlight {
+  opponent: string;
+  ratingDiff: number;
+}
+
+export interface DetailedInsights {
+  total: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  /** Overall win rate 0-100 (draws as half). null when no games. */
+  winRate: number | null;
+  /** Net rated Elo change across the games (null when none carry a delta). */
+  netElo: number | null;
+  /** Average opponent rating (null when unknown). */
+  avgOpponent: number | null;
+  /** How many of the games were rated. */
+  ratedCount: number;
+  /** Best single rating gain and worst single loss, if any rated data exists. */
+  bestGame: RatingHighlight | null;
+  worstGame: RatingHighlight | null;
+  /** Most frequently played time control label, if any. */
+  topTimeControl: { label: string; count: number } | null;
+  /** Most-played opening (by game count). */
+  topOpening: OpeningRecord | null;
+  /** Best / worst opening by win rate (min 2 games to qualify). */
+  bestOpening: OpeningRecord | null;
+  worstOpening: OpeningRecord | null;
+}
+
+function rateOf(wins: number, draws: number, total: number): number {
+  return total === 0 ? 0 : Math.round(((wins + draws * 0.5) / total) * 100);
+}
+
+/**
+ * Richer, single-scope insights: overall record, rating swings, favourite time
+ * control, and per-opening performance. Expects games newest-first.
+ */
+export function computeDetailedInsights(games: GameRecord[]): DetailedInsights {
+  let wins = 0;
+  let losses = 0;
+  let draws = 0;
+  let netElo = 0;
+  let eloAvailable = false;
+  let ratedCount = 0;
+  let oppSum = 0;
+  let oppCount = 0;
+
+  let bestGame: RatingHighlight | null = null;
+  let worstGame: RatingHighlight | null = null;
+
+  const tcCounts = new Map<string, number>();
+  const openings = new Map<string, OpeningRecord>();
+
+  for (const g of games) {
+    if (g.result === 'win') wins++;
+    else if (g.result === 'loss') losses++;
+    else draws++;
+
+    if (g.rated) ratedCount++;
+    if (g.rated && g.ratingDiff !== null) {
+      netElo += g.ratingDiff;
+      eloAvailable = true;
+      if (g.ratingDiff > 0 && (!bestGame || g.ratingDiff > bestGame.ratingDiff)) {
+        bestGame = { opponent: g.opponent, ratingDiff: g.ratingDiff };
+      }
+      if (g.ratingDiff < 0 && (!worstGame || g.ratingDiff < worstGame.ratingDiff)) {
+        worstGame = { opponent: g.opponent, ratingDiff: g.ratingDiff };
+      }
+    }
+
+    if (g.opponentRating !== null) {
+      oppSum += g.opponentRating;
+      oppCount++;
+    }
+
+    tcCounts.set(g.timeControl, (tcCounts.get(g.timeControl) ?? 0) + 1);
+
+    if (g.opening) {
+      const rec =
+        openings.get(g.opening) ??
+        { name: g.opening, wins: 0, losses: 0, draws: 0, total: 0, winRate: 0 };
+      if (g.result === 'win') rec.wins++;
+      else if (g.result === 'loss') rec.losses++;
+      else rec.draws++;
+      rec.total++;
+      openings.set(g.opening, rec);
+    }
+  }
+
+  for (const rec of openings.values()) {
+    rec.winRate = rateOf(rec.wins, rec.draws, rec.total);
+  }
+
+  let topTimeControl: DetailedInsights['topTimeControl'] = null;
+  for (const [label, count] of tcCounts) {
+    if (!topTimeControl || count > topTimeControl.count) topTimeControl = { label, count };
+  }
+
+  const openingList = [...openings.values()];
+  const topOpening =
+    openingList.reduce<OpeningRecord | null>(
+      (best, o) => (!best || o.total > best.total ? o : best),
+      null,
+    ) ?? null;
+
+  // Best / worst by win rate need a small sample to be meaningful.
+  const qualified = openingList.filter((o) => o.total >= 2);
+  const bestOpening =
+    qualified.reduce<OpeningRecord | null>(
+      (best, o) => (!best || o.winRate > best.winRate ? o : best),
+      null,
+    ) ?? null;
+  const worstOpening =
+    qualified.reduce<OpeningRecord | null>(
+      (worst, o) => (!worst || o.winRate < worst.winRate ? o : worst),
+      null,
+    ) ?? null;
+
+  const total = games.length;
+  return {
+    total,
+    wins,
+    losses,
+    draws,
+    winRate: total === 0 ? null : rateOf(wins, draws, total),
+    netElo: eloAvailable ? netElo : null,
+    avgOpponent: oppCount === 0 ? null : Math.round(oppSum / oppCount),
+    ratedCount,
+    bestGame,
+    worstGame,
+    topTimeControl,
+    topOpening,
+    bestOpening,
+    worstOpening,
+  };
+}
