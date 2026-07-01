@@ -18,25 +18,6 @@ export function CurrentGameCard({ status, gameDetectedAt }: CurrentGameCardProps
       {gameId ? (
         <>
           <div
-            className="game__preview"
-            title="Live Lichess board preview"
-            style={{
-              aspectRatio: '4 / 3',
-              width: '100%',
-              background: 'var(--bg-elev-2)',
-              border: '1px solid var(--border)',
-              overflow: 'hidden',
-            }}
-          >
-            <iframe
-              src={`https://lichess.org/embed/${gameId}?theme=auto&bg=auto`}
-              title={`Lichess game ${gameId}`}
-              loading="lazy"
-              referrerPolicy="no-referrer"
-              style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
-            />
-          </div>
-          <div
             className="game__meta-line"
             style={{
               display: 'flex',
@@ -64,7 +45,7 @@ export function CurrentGameCard({ status, gameDetectedAt }: CurrentGameCardProps
             Spectate on Lichess
           </a>
           <p className="game__note">
-            Preview only. If Lichess blocks the embed, the spectate button opens the board.
+            Opens the live board on lichess.org. This app shows no moves or analysis.
           </p>
         </>
       ) : (
