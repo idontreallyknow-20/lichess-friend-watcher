@@ -727,13 +727,85 @@ code {
 }
 
 /* ---------- Responsive ---------- */
+@media (max-width: 720px) {
+  /* Even, tidy control grid instead of ragged wrapping. */
+  .tabs {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .tab {
+    min-width: 0;
+    align-items: center;
+    text-align: center;
+  }
+  .tab__name {
+    font-size: 0.86rem;
+  }
+}
+
 @media (max-width: 560px) {
+  .app {
+    padding: 18px 12px 44px;
+    gap: 14px;
+  }
+
+  /* Toolbar becomes a clean 2-column control panel. */
+  .toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    align-items: stretch;
+  }
+  .toolbar .theme-picker {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+  }
+  .toolbar .theme-picker__label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .toolbar .select {
+    width: 100%;
+  }
+  .toolbar .btn {
+    width: 100%;
+    align-self: end;
+    min-height: 44px;
+  }
+
+  .card {
+    padding: 16px 15px;
+  }
+  .card__title {
+    margin-bottom: 12px;
+  }
+
   .stats-grid {
     grid-template-columns: repeat(3, 1fr);
   }
-  .header__title {
+  .stat__value {
     font-size: 1.25rem;
   }
+
+  .header {
+    padding: 2px 0 4px;
+  }
+  .header__brand {
+    gap: 11px;
+  }
+  .header__logo {
+    font-size: 30px;
+  }
+  .header__title {
+    font-size: 1.2rem;
+  }
+  .header__subtitle {
+    font-size: 0.82rem;
+  }
+
   .status__meta {
     gap: 16px;
   }
@@ -742,5 +814,21 @@ code {
   }
   .perf-detail__meta {
     gap: 18px;
+  }
+
+  /* Comfortable tap targets on touch screens. */
+  .btn,
+  .search__input,
+  .select {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 380px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .toolbar {
+    grid-template-columns: 1fr;
   }
 }
