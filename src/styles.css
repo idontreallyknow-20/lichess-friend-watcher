@@ -998,14 +998,52 @@ code {
   gap: 12px;
   flex-wrap: wrap;
 }
+.openings-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
 .opening-summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 8px;
   margin: 4px 0 16px;
 }
+.opening-recs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.opening-rec {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg-elev-2));
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+}
+.opening-rec__k {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.opening-rec__name {
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.18;
+}
+.opening-rec__meta {
+  color: var(--text-dim);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+.openings-filter-note {
+  margin-bottom: 10px;
+}
 .openings-table {
-  min-width: 760px;
+  min-width: 900px;
 }
 .openings__title {
   margin: 0 0 10px;
