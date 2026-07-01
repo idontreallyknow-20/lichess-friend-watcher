@@ -102,6 +102,14 @@ export interface RatingHighlight {
   ratingDiff: number;
 }
 
+export interface OpeningTableRow extends OpeningRecord {
+  white: ColorRecord;
+  black: ColorRecord;
+  opponentWins: number;
+  avgOpponent: number | null;
+  lastPlayed: number;
+}
+
 export interface DetailedInsights {
   total: number;
   wins: number;
@@ -233,4 +241,59 @@ export function computeDetailedInsights(games: GameRecord[]): DetailedInsights {
     bestOpening,
     worstOpening,
   };
+}
+
+/** Full opening table for a larger openings view. Expects newest-first games. */
+export function computeOpeningTable(games: GameRecord[]): OpeningTableRow[] {
+  const openings = new Map<
+    string,
+    OpeningTableRow & { opponentTotal: number; opponentCount: number }
+  >();
+
+  for (const game of games) {
+    if (!game.opening) continue;
+    const rec =
+      openings.get(game.opening) ??
+      {
+        name: game.opening,
+        wins: 0,
+        losses: 0,
+        draws: 0,
+        total: 0,
+        winRate: 0,
+        white: emptyRecord(),
+        black: emptyRecord(),
+        opponentWins: 0,
+        avgOpponent: null,
+        opponentTotal: 0,
+        opponentCount: 0,
+        lastPlayed: 0,
+      };
+
+    if (game.result === 'win') rec.wins++;
+    else if (game.result === 'loss') {
+      rec.losses++;
+      rec.opponentWins++;
+    } else rec.draws++;
+
+    const colorRec = game.color === 'white' ? rec.white : rec.black;
+    if (game.result === 'win') colorRec.wins++;
+    else if (game.result === 'loss') colorRec.losses++;
+    else colorRec.draws++;
+
+    if (game.opponentRating !== null) {
+      rec.opponentTotal += game.opponentRating;
+      rec.opponentCount++;
+      rec.avgOpponent = Math.round(rec.opponentTotal / rec.opponentCount);
+    }
+
+    rec.total++;
+    rec.lastPlayed = Math.max(rec.lastPlayed, game.endTime);
+    rec.winRate = rateOf(rec.wins, rec.draws, rec.total);
+    openings.set(game.opening, rec);
+  }
+
+  return [...openings.values()]
+    .map(({ opponentTotal, opponentCount, ...row }) => row)
+    .sort((a, b) => b.total - a.total || b.winRate - a.winRate || b.lastPlayed - a.lastPlayed);
 }

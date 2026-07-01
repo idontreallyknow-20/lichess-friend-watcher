@@ -45,6 +45,12 @@ export function filterToday(games: GameRecord[]): GameRecord[] {
   return games.filter((g) => isToday(g.endTime));
 }
 
+/** Games that ended in the last seven days. */
+export function filterLastWeek(games: GameRecord[]): GameRecord[] {
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  return games.filter((g) => g.endTime >= cutoff);
+}
+
 /** Games that ended at or after the given session start time. */
 export function filterSession(games: GameRecord[], sessionStart: number): GameRecord[] {
   return games.filter((g) => g.endTime >= sessionStart);

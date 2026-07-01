@@ -140,6 +140,14 @@ code {
   align-items: stretch;
   gap: 5px;
 }
+.settings-grid .theme-picker {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+.settings-grid .theme-picker .btn {
+  width: 100%;
+}
 .appearance .theme-picker__label {
   font-size: 0.7rem;
   text-transform: uppercase;
@@ -738,16 +746,28 @@ code {
   gap: 12px;
   margin-bottom: 10px;
 }
+.trend-title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
 .trend__latest {
   font-size: 1.8rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--accent-hover);
 }
+.trend__meta {
+  margin-top: 10px;
+  font-size: 0.78rem;
+}
 .sparkline {
   display: block;
   width: 100%;
-  height: 64px;
+  height: 96px;
 }
 
 /* ---------- Games table ---------- */
@@ -970,6 +990,22 @@ code {
   margin-top: 16px;
   border-top: 1px solid var(--border);
   padding-top: 14px;
+}
+.openings-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.opening-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+  margin: 4px 0 16px;
+}
+.openings-table {
+  min-width: 760px;
 }
 .openings__title {
   margin: 0 0 10px;

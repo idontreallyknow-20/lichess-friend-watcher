@@ -9,8 +9,8 @@ export interface GamesState {
   refresh: () => void;
 }
 
-/** Number of recent games fetched to compute today's / session stats. */
-const MAX_GAMES = 100;
+/** Number of recent games fetched to compute week / session / opening stats. */
+const MAX_GAMES = 300;
 
 /**
  * Loads the most recent finished games for a user. Re-fetched on a slow timer

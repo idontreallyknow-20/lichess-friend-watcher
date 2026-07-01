@@ -4,8 +4,9 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { useStatus } from './hooks/useStatus';
 import { useGames } from './hooks/useGames';
 import { useProfile } from './hooks/useProfile';
+import { useRatingHistory } from './hooks/useRatingHistory';
 import { useTheme } from './hooks/useTheme';
-import { computeStats, filterToday } from './utils/stats';
+import { computeStats, filterLastWeek, filterToday } from './utils/stats';
 import { computeSessions, currentSession } from './utils/sessions';
 import { filterBySpeed } from './utils/insights';
 import { orderSpeeds, speedLabel } from './utils/speeds';
@@ -25,6 +26,7 @@ import { InstallButton } from './components/InstallButton';
 import { MoodCard } from './components/MoodCard';
 import { TrendCard } from './components/TrendCard';
 import { GamesTable } from './components/GamesTable';
+import { OpeningsCard } from './components/OpeningsCard';
 
 const MAX_RECENT = 8;
 const BACKGROUNDS = [
@@ -113,13 +115,14 @@ const BACKGROUNDS = [
   },
 ];
 
-type Panel = 'session' | 'tilt' | 'insights' | 'trend' | 'games' | 'settings';
+type Panel = 'session' | 'tilt' | 'insights' | 'trend' | 'openings' | 'games' | 'settings';
 
 const PANELS: { id: Panel; label: string }[] = [
   { id: 'session', label: 'Current session' },
   { id: 'tilt', label: 'Tilt meter' },
   { id: 'insights', label: 'Insights' },
   { id: 'trend', label: 'Trend' },
+  { id: 'openings', label: 'Openings' },
   { id: 'games', label: 'Games' },
   { id: 'settings', label: 'Settings' },
 ];
@@ -144,6 +147,7 @@ export default function App() {
   const statusState = useStatus(watched);
   const gamesState = useGames(watched, refreshKey);
   const profileState = useProfile(watched);
+  const ratingHistoryState = useRatingHistory(watched);
 
   useEffect(() => {
     if (backgroundId === 'custom' && customBackground) {
@@ -269,6 +273,7 @@ export default function App() {
   }, []);
 
   const todayGames = useMemo(() => filterToday(gamesState.games), [gamesState.games]);
+  const weekGames = useMemo(() => filterLastWeek(gamesState.games), [gamesState.games]);
   const sessionGames = useMemo(() => {
     const sessions = computeSessions(gamesState.games, sessionGapMin * 60 * 1000);
     return currentSession(sessions)?.games ?? [];
@@ -355,13 +360,24 @@ export default function App() {
             <InsightsPanel
               recentGames={gamesState.games}
               todayGames={todayGames}
+              weekGames={weekGames}
               sessionGames={sessionGames}
               perfs={profileState.profile?.perfs ?? {}}
               profileLoading={profileState.loading}
             />
           )}
 
-          {activePanel === 'trend' && <TrendCard games={gamesState.games} scopeLabel="all speeds" />}
+          {activePanel === 'trend' && (
+            <TrendCard
+              games={gamesState.games}
+              history={ratingHistoryState.history}
+              perfs={profileState.profile?.perfs ?? {}}
+              loading={ratingHistoryState.loading || profileState.loading}
+              error={ratingHistoryState.error}
+            />
+          )}
+
+          {activePanel === 'openings' && <OpeningsCard games={gamesState.games} />}
 
           {activePanel === 'games' && (
             <GamesTable games={gamesState.games} loading={gamesState.loading} error={gamesState.error} />
@@ -378,9 +394,6 @@ export default function App() {
               onCustomBackground={setCustomBackground}
               gapMinutes={sessionGapMin}
               onGapChange={setSessionGapMin}
-              onRefresh={handleRefresh}
-              onShare={handleShare}
-              copied={copied}
             />
           )}
         </>
@@ -400,22 +413,15 @@ export default function App() {
           </div>
         </section>
       )}
-
-      <footer className="footer">
-        Data from the public{' '}
-        <a href="https://lichess.org/api" target="_blank" rel="noopener noreferrer">
-          Lichess API
-        </a>
-        . For spectating and stats only, with no engine analysis or move suggestions.
-      </footer>
     </div>
   );
 }
 
-type Scope = 'recent' | 'today' | 'session';
+type Scope = 'recent' | 'week' | 'today' | 'session';
 
 const SCOPES: { id: Scope; label: string }[] = [
   { id: 'recent', label: 'Recent' },
+  { id: 'week', label: 'Last week' },
   { id: 'today', label: 'Today' },
   { id: 'session', label: 'Session' },
 ];
@@ -423,6 +429,7 @@ const SCOPES: { id: Scope; label: string }[] = [
 interface InsightsPanelProps {
   recentGames: GameRecord[];
   todayGames: GameRecord[];
+  weekGames: GameRecord[];
   sessionGames: GameRecord[];
   perfs: Profile['perfs'];
   profileLoading: boolean;
@@ -431,6 +438,7 @@ interface InsightsPanelProps {
 function InsightsPanel({
   recentGames,
   todayGames,
+  weekGames,
   sessionGames,
   perfs,
   profileLoading,
@@ -449,12 +457,19 @@ function InsightsPanel({
     return orderSpeeds(keys);
   }, [perfs, recentGames]);
 
-  const baseGames = scope === 'today' ? todayGames : scope === 'session' ? sessionGames : recentGames;
+  const baseGames =
+    scope === 'today'
+      ? todayGames
+      : scope === 'week'
+        ? weekGames
+        : scope === 'session'
+          ? sessionGames
+          : recentGames;
   const games = useMemo(() => filterBySpeed(baseGames, speed), [baseGames, speed]);
 
   const scopeLabel = SCOPES.find((s) => s.id === scope)?.label ?? 'Recent';
   const speedText = speed === 'all' ? 'All speeds' : speedLabel(speed);
-  const title = `${speedText} · ${scopeLabel}`;
+  const title = `${speedText} - ${scopeLabel}`;
 
   return (
     <div className="insights-panel">
@@ -579,9 +594,6 @@ interface SettingsPanelProps {
   onCustomBackground: (value: string | null) => void;
   gapMinutes: number;
   onGapChange: (minutes: number) => void;
-  onRefresh: () => void;
-  onShare: () => void;
-  copied: boolean;
 }
 
 function SettingsPanel({
@@ -594,9 +606,6 @@ function SettingsPanel({
   onCustomBackground,
   gapMinutes,
   onGapChange,
-  onRefresh,
-  onShare,
-  copied,
 }: SettingsPanelProps) {
   return (
     <section className="card card--wide">
@@ -623,18 +632,6 @@ function SettingsPanel({
           </select>
         </label>
       </div>
-      <div className="settings-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 16 }}>
-        <button className="btn btn--ghost" onClick={onShare}>
-          {copied ? 'Copied' : 'Copy watch link'}
-        </button>
-        <button className="btn btn--ghost" onClick={onRefresh}>
-          Refresh data
-        </button>
-      </div>
-      <p className="empty">
-        Mood and tilt use the latest detected session, recent losses, loss streaks, and Elo movement. Live status
-        stays simple so it works cleanly on mobile and desktop.
-      </p>
     </section>
   );
 }

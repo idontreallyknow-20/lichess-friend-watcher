@@ -1,4 +1,4 @@
-import type { GameRecord, Profile, UserStatus } from '../types';
+import type { GameRecord, Profile, RatingHistorySeries, UserStatus } from '../types';
 import { parseGame } from '../utils/games';
 
 const BASE = 'https://lichess.org';
@@ -53,6 +53,58 @@ export async function fetchProfile(username: string): Promise<Profile | null> {
     username: data?.username ?? username,
     perfs: (data?.perfs ?? {}) as Profile['perfs'],
   };
+}
+
+function historySpeedName(name: string) {
+  const key = name.toLowerCase().replace(/\s+/g, '');
+  if (key === 'ultrabullet') return 'ultraBullet';
+  return key;
+}
+
+/** Fetch Lichess rating-history points for real chart data. */
+export async function fetchRatingHistory(username: string): Promise<RatingHistorySeries[]> {
+  const res = await fetch(`${BASE}/api/user/${encodeURIComponent(username)}/rating-history`);
+  if (res.status === 429) {
+    throw new LichessError('Rate limited by Lichess. Please wait a moment.', 429);
+  }
+  if (!res.ok) {
+    throw new LichessError(`Rating history request failed (${res.status}).`, res.status);
+  }
+
+  const data = await res.json();
+  if (!Array.isArray(data)) return [];
+
+  return data
+    .map((series: any) => {
+      const name = String(series?.name ?? '');
+      const points = Array.isArray(series?.points)
+        ? series.points
+            .map((point: unknown) => {
+              if (!Array.isArray(point) || point.length < 4) return null;
+              const [year, month, day, rating] = point;
+              if (
+                typeof year !== 'number' ||
+                typeof month !== 'number' ||
+                typeof day !== 'number' ||
+                typeof rating !== 'number'
+              ) {
+                return null;
+              }
+              return {
+                date: new Date(year, month, day).getTime(),
+                rating,
+              };
+            })
+            .filter(Boolean)
+        : [];
+
+      return {
+        speed: historySpeedName(name),
+        name,
+        points,
+      } as RatingHistorySeries;
+    })
+    .filter((series) => series.name && series.points.length > 0);
 }
 
 /** Fetch the live status of a single user. */

@@ -63,3 +63,10 @@ export interface Profile {
   username: string;
   perfs: Record<string, Perf>;
 }
+
+/** One Lichess rating-history series for a speed/perf. */
+export interface RatingHistorySeries {
+  speed: string;
+  name: string;
+  points: { date: number; rating: number }[];
+}

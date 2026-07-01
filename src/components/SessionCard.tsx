@@ -3,7 +3,7 @@ import type { GameRecord } from '../types';
 import { computeSessions, currentSession, sessionsToday } from '../utils/sessions';
 import { computeStats } from '../utils/stats';
 import { useNow } from '../hooks/useNow';
-import { formatDuration, formatClock, formatSigned } from '../utils/format';
+import { formatDuration, formatSigned } from '../utils/format';
 
 interface SessionCardProps {
   /** All recent games (any order). Sessions are speed-agnostic. */
@@ -16,6 +16,35 @@ interface SessionCardProps {
 }
 
 const GAP_CHOICES = [15, 30, 60, 120];
+
+function dayLabel(ts: number) {
+  const then = new Date(ts);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+
+  if (sameDay(then, today)) return 'Today';
+  if (sameDay(then, yesterday)) return 'Yesterday';
+  return then.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function clockLabel(ts: number) {
+  return new Date(ts).toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function sessionWhen(start: number, end: number) {
+  const startLabel = `${dayLabel(start)} at ${clockLabel(start)}`;
+  if (dayLabel(start) === dayLabel(end)) return startLabel;
+  return `${startLabel} to ${dayLabel(end)} at ${clockLabel(end)}`;
+}
 
 export function SessionCard({ games, gapMinutes, onGapChange, isPlaying, loading }: SessionCardProps) {
   const now = useNow(1000);
@@ -107,7 +136,7 @@ export function SessionCard({ games, gapMinutes, onGapChange, isPlaying, loading
           </div>
 
           <div className="session-foot muted">
-            Started {formatClock(session.start)} · {todayCount} session{todayCount === 1 ? '' : 's'} today
+            {sessionWhen(session.start, session.end)} - {todayCount} session{todayCount === 1 ? '' : 's'} today
           </div>
         </>
       )}
