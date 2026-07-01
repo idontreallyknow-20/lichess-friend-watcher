@@ -13,7 +13,7 @@
  *   POLL_MS               (optional)  live poll interval in ms (default 8000, min 5000)
  *   GAMES_POLL_MS         (optional)  result poll interval in ms (default 30000, min 15000)
  *   PLAYING_COOLDOWN_MS   (optional)  quiet time before another "is playing" push (default 420000)
- *   RECAP_EVERY_GAMES     (optional)  send recap every N finished games (default 5)
+ *   RECAP_EVERY_GAMES     (optional)  send recap every N finished games (default 2)
  *
  * If neither NTFY_TOPIC nor WEBHOOK_URL is set, it just logs to the console.
  *
@@ -30,7 +30,7 @@ const PLAYING_COOLDOWN_MS = Math.max(
   60000,
   Number(process.env.PLAYING_COOLDOWN_MS) || 7 * 60 * 1000,
 );
-const RECAP_EVERY_GAMES = Math.max(1, Number(process.env.RECAP_EVERY_GAMES) || 5);
+const RECAP_EVERY_GAMES = Math.max(1, Number(process.env.RECAP_EVERY_GAMES) || 2);
 
 if (!USER) {
   console.error('Error: set LICHESS_USER (the username to watch).');
@@ -67,7 +67,7 @@ function pick(lines) {
 }
 
 function randomSpecialInterval() {
-  return 3 + Math.floor(Math.random() * 3);
+  return 1 + Math.floor(Math.random() * 2);
 }
 
 function profileGames(games) {
@@ -84,7 +84,7 @@ function profileGames(games) {
 }
 
 function currentStreak(games) {
-  const last = games.at(-1);
+  const last = games[games.length - 1];
   if (!last) return { result: null, count: 0 };
   let count = 0;
   for (let i = games.length - 1; i >= 0; i -= 1) {
@@ -94,112 +94,122 @@ function currentStreak(games) {
   return { result: last.result, count };
 }
 
-function signed(value) {
-  return value > 0 ? `+${value}` : String(value);
-}
-
-function ratingSummary(games) {
+function ratingInfo(games) {
   const latestRated = [...games].reverse().find((game) => typeof game.ratingAfter === 'number');
   const diffs = games
     .map((game) => game.ratingDiff)
     .filter((diff) => typeof diff === 'number');
 
-  if (!latestRated && diffs.length === 0) return '';
+  if (!latestRated && diffs.length === 0) {
+    return { text: 'rating chaos unknown', delta: null, rating: null };
+  }
 
   const delta = diffs.length ? diffs.reduce((sum, diff) => sum + diff, 0) : null;
-  if (latestRated && delta !== null) return ` Rating: ${latestRated.ratingAfter} (${signed(delta)}).`;
-  if (latestRated) return ` Rating: ${latestRated.ratingAfter}.`;
-  return ` Rating change: ${signed(delta)}.`;
+  const rating = latestRated?.ratingAfter ?? null;
+  const deltaText =
+    delta === null
+      ? 'with the rating change hiding from us'
+      : delta > 0
+        ? `gaining ${delta} Elo`
+        : delta < 0
+          ? `losing ${Math.abs(delta)} Elo`
+          : 'gaining absolutely 0 Elo somehow';
+  const ratingText = rating === null ? '' : `, now ${rating}`;
+  return {
+    text: `${deltaText}${ratingText}`,
+    delta,
+    rating,
+  };
 }
 
 function recapMessage(name, games) {
   const stats = profileGames(games);
-  const rating = ratingSummary(games);
+  const rating = ratingInfo(games);
+  const resultLine =
+    stats.wins === stats.total
+      ? `${stats.wins} straight wins`
+      : stats.losses === stats.total
+        ? `${stats.losses} straight losses`
+        : `${stats.wins} wins, ${stats.losses} losses${stats.draws ? `, ${stats.draws} draws` : ''}`;
   const intro =
-    stats.wins === 5
+    stats.wins === stats.total
       ? pick([
-          `${name} just swept the whole batch. Absurd behavior`,
-          `${name} is fully in raid boss mode right now`,
-          `${name} turned the last five games into a highlight reel`,
-          `${name} is playing like the board personally apologized`,
-          `${name} is on fire and the smoke detector is tired`,
-          `${name} just made winning look like a setting you toggle on`,
+          `${name} is going CRAZY right now`,
+          `${name} is playing like the board owes him money`,
+          `${name} is on demon time`,
+          `${name} is absolutely farming these people`,
+          `${name} has entered menace mode`,
+          `${name} is making the lobby look fake`,
+          `${name} is cooking so hard the pieces need insurance`,
+          `${name} is playing like he found a hidden difficulty slider`,
         ])
-      : stats.wins === 4
+      : stats.wins > stats.losses
         ? pick([
-            `${name} is doing crazy work right now`,
-            `${name} is mostly bullying the scoreboard at this point`,
-            `${name} is looking dangerous, like genuinely annoying to play`,
-            `${name} just put together a nasty little run`,
-            `${name} is stacking wins like the lobby forgot to resist`,
-            `${name} is giving confident, slightly illegal momentum`,
+            `${name} is going CRAZY`,
+            `${name} is kind of nasty right now`,
+            `${name} is winning like he has somewhere to be`,
+            `${name} is cooking, no notes`,
+            `${name} is putting up villain numbers`,
+            `${name} is making this look disrespectfully easy`,
+            `${name} is bullying the scoreboard`,
+            `${name} is locked in and annoying with it`,
           ])
-        : stats.wins === 3 && stats.losses <= 2
+        : stats.losses === stats.total
           ? pick([
-              `${name} is edging ahead and the vibes are positive`,
-              `${name} is doing pretty well, not flawless but definitely cooking`,
-              `${name} is winning the argument with variance right now`,
-              `${name} has the scoreboard leaning in the right direction`,
-              `${name} is having a solid stretch with just enough chaos`,
-              `${name} is up overall, which is all the drama we need`,
+              `${name} is playing like GARBAGE right now`,
+              `${name} is getting absolutely fried`,
+              `${name} is donating rating like it is a charity stream`,
+              `${name} is speedrunning the collapse`,
+              `${name} is in full disaster cinema`,
+              `${name} is getting cooked alive on the board`,
+              `${name} is making the resign button look employed`,
+              `${name} is having a generationally unserious stretch`,
             ])
-          : stats.losses === 5
+          : stats.losses > stats.wins
             ? pick([
-                `${name} just ate five rough ones. That is a reset-button situation`,
-                `${name} is in the pain cave right now`,
-                `${name} is taking a historic amount of emotional damage`,
-                `${name} needs water, posture, and maybe a totally different queue`,
-                `${name} is speedrunning the villain origin story`,
-                `${name} is getting cooked so hard the kitchen filed paperwork`,
+                `${name} is playing like GARBAGE`,
+                `${name} is getting packed up right now`,
+                `${name} is losing the plot and possibly the furniture`,
+                `${name} is in the trenches doing trench activities`,
+                `${name} is bleeding Elo with confidence`,
+                `${name} is making every game look like a jump scare`,
+                `${name} is getting worked by the chess universe`,
+                `${name} is one more loss away from needing a wellness check`,
               ])
-            : stats.losses === 4
-              ? pick([
-                  `${name} is having a rough stretch, not gonna lie`,
-                  `${name} might be entering tilt country`,
-                  `${name} is donating rating with concerning generosity`,
-                  `${name} is getting tested by the chess universe`,
-                  `${name} needs a breather before the board starts charging rent`,
-                  `${name} is in a slump, but the comeback arc is available`,
-                ])
-              : stats.losses === 3 && stats.wins <= 2
-                ? pick([
-                    `${name} is a little underwater right now`,
-                    `${name} is not doomed, but the vibes are sweating`,
-                    `${name} is losing the small sample size argument`,
-                    `${name} took a few hits, nothing fatal but definitely spicy`,
-                    `${name} is wobbling a bit, the next batch matters`,
-                    `${name} is learning loudly right now`,
-                  ])
-                : pick([
-                    `${name} is keeping it basically even and very annoying to predict`,
-                    `${name} is living in maximum suspense mode`,
-                    `${name} is balanced right now, somehow both fine and stressful`,
-                    `${name} is giving coin flip cinema`,
-                    `${name} and the scoreboard are currently negotiating`,
-                    `${name} is neither cooking nor cooked, just simmering`,
-                  ]);
+            : pick([
+                `${name} is in coin-flip chaos mode`,
+                `${name} is playing confusing chess for confusing times`,
+                `${name} is neither cooking nor cooked, just aggressively simmering`,
+                `${name} is making the scoreboard do paperwork`,
+                `${name} is producing premium nonsense`,
+                `${name} is balanced in the most stressful way possible`,
+              ]);
 
-  return `${intro}.${rating}`;
+  return `${intro}: ${resultLine}, ${rating.text}.`;
 }
 
 function specialMessage(name, games) {
   const streak = currentStreak(games);
   if (streak.result === 'loss' && streak.count >= 3) {
+    const rating = ratingInfo(games.slice(-streak.count));
     return pick([
-      `Nah ${name} is tilting right now, ${streak.count} losses in a row.`,
-      `${name} just lost ${streak.count} straight. The pause button is begging to be noticed.`,
-      `Tilt alarm for ${name}: ${streak.count} losses in a row.`,
-      `${name} is in the danger zone with ${streak.count} straight losses.`,
-      `${name} might be beefing with the board: ${streak.count} losses straight.`,
+      `${name} is playing like GARBAGE with ${streak.count} straight losses, ${rating.text}.`,
+      `Nah ${name} is TILTING: ${streak.count} losses in a row, ${rating.text}.`,
+      `${name} is getting cooked with ${streak.count} straight losses, ${rating.text}.`,
+      `${name} is in full collapse mode: ${streak.count} straight losses, ${rating.text}.`,
+      `${name} is beefing with the board and losing: ${streak.count} straight losses, ${rating.text}.`,
+      `${name} is speedrunning pain with ${streak.count} straight losses, ${rating.text}.`,
     ]);
   }
   if (streak.result === 'win' && streak.count >= 3) {
+    const rating = ratingInfo(games.slice(-streak.count));
     return pick([
-      `${name} is on a heater: ${streak.count} wins in a row.`,
-      `Hold up, ${name} has ${streak.count} straight wins. That is actual cooking.`,
-      `${name} found the turbo button: ${streak.count} wins straight.`,
-      `${name} is farming momentum with ${streak.count} wins in a row.`,
-      `${name} is becoming a problem: ${streak.count} straight wins.`,
+      `${name} is going CRAZY with ${streak.count} straight wins, ${rating.text}.`,
+      `${name} is on a heater with ${streak.count} wins in a row, ${rating.text}.`,
+      `${name} found the turbo button: ${streak.count} straight wins, ${rating.text}.`,
+      `${name} is becoming a PROBLEM with ${streak.count} straight wins, ${rating.text}.`,
+      `${name} is farming humans right now: ${streak.count} straight wins, ${rating.text}.`,
+      `${name} is playing like a final boss with ${streak.count} straight wins, ${rating.text}.`,
     ]);
   }
   if (streak.result === 'draw' && streak.count >= 3) {
@@ -214,31 +224,35 @@ function specialMessage(name, games) {
   if (lastFive.length >= 5) {
     const stats = profileGames(lastFive);
     if (stats.wins === 5) {
+      const rating = ratingInfo(lastFive);
       return pick([
-        `${name} just swept five straight. Completely unreasonable behavior.`,
-        `Five wins in five games for ${name}. Somebody frame the scoresheet.`,
-        `${name} went 5-0. That is not a run, that is a weather event.`,
+        `${name} just went nuclear: five straight wins, ${rating.text}.`,
+        `${name} is going CRAZY with a clean five-game sweep, ${rating.text}.`,
+        `${name} went full final boss for five games, ${rating.text}.`,
       ]);
     }
     if (stats.losses === 5) {
+      const rating = ratingInfo(lastFive);
       return pick([
-        `${name} just went 0-5. Deep breaths, big reset, maybe snacks.`,
-        `Five rough ones for ${name}. The comeback is going to need a soundtrack.`,
-        `${name} is down bad over the last five, but the lore is getting rich.`,
+        `${name} is playing like GARBAGE: five straight losses, ${rating.text}.`,
+        `${name} just got folded for five games, ${rating.text}.`,
+        `${name} is in disaster mode after five losses, ${rating.text}.`,
       ]);
     }
     if (stats.wins === 4 && stats.losses <= 1) {
+      const rating = ratingInfo(lastFive);
       return pick([
-        `${name} is 4-1 over the last five. Pretty nasty little run.`,
-        `Four wins in five for ${name}. The confidence is getting loud.`,
-        `${name} went 4-1 recently, which is what scientists call being annoying to play.`,
+        `${name} is going CRAZY with four wins in five, ${rating.text}.`,
+        `${name} is bullying the queue with four wins in five, ${rating.text}.`,
+        `${name} is locked in with four wins and one little speed bump, ${rating.text}.`,
       ]);
     }
     if (stats.losses === 4 && stats.wins <= 1) {
+      const rating = ratingInfo(lastFive);
       return pick([
-        `${name} is 1-4 over the last five. The rating graph has seen better weather.`,
-        `Four losses in five for ${name}. This is officially a reset-window moment.`,
-        `${name} is taking some hits lately: 1-4 in the last five.`,
+        `${name} is playing like GARBAGE with four losses in five, ${rating.text}.`,
+        `${name} is getting packed up with four losses in five, ${rating.text}.`,
+        `${name} is bleeding out over the last five, ${rating.text}.`,
       ]);
     }
   }
@@ -377,8 +391,8 @@ async function pollFinishedGames(name, force = false) {
       const message = specialMessage(name, finishedGames);
       if (message) {
         await push(message, `https://lichess.org/@/${encodeURIComponent(USER)}`);
-        nextSpecialAfter = finishedGames.length + randomSpecialInterval();
       }
+      nextSpecialAfter = finishedGames.length + randomSpecialInterval();
     }
   }
 }
@@ -431,7 +445,7 @@ async function poll() {
 log(`Watching "${USER}" every ${POLL_MS}ms.`);
 log(`Polling finished games every ${GAMES_POLL_MS}ms.`);
 log(`Plain playing alerts reset after ${Math.round(PLAYING_COOLDOWN_MS / 60000)} quiet minutes.`);
-log(`Sending a funny recap every ${RECAP_EVERY_GAMES} finished games.`);
+log(`Sending an extreme recap every ${RECAP_EVERY_GAMES} finished games.`);
 log(
   NTFY_TOPIC
     ? `Pushing to ntfy topic "${NTFY_TOPIC}".`
