@@ -4,6 +4,7 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { useStatus } from './hooks/useStatus';
 import { useGames } from './hooks/useGames';
 import { useTheme } from './hooks/useTheme';
+import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { computeStats, filterToday } from './utils/stats';
 import { computeSessions, currentSession } from './utils/sessions';
 
@@ -46,6 +47,47 @@ const BACKGROUNDS = [
     value:
       'linear-gradient(180deg, color-mix(in srgb, var(--bg-elev) 16%, transparent), transparent 240px), var(--bg)',
   },
+  {
+    id: 'mesh',
+    name: 'Mesh',
+    value:
+      'radial-gradient(620px 460px at 8% 12%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%), radial-gradient(560px 460px at 92% 8%, color-mix(in srgb, var(--win) 18%, transparent), transparent 60%), radial-gradient(680px 520px at 60% 100%, color-mix(in srgb, var(--draw) 16%, transparent), transparent 62%), var(--bg)',
+  },
+  {
+    id: 'spotlight',
+    name: 'Spotlight',
+    value:
+      'radial-gradient(1000px 640px at 50% -12%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 60%), var(--bg)',
+  },
+  {
+    id: 'grid',
+    name: 'Grid',
+    value:
+      'linear-gradient(color-mix(in srgb, var(--border) 45%, transparent) 1px, transparent 1px) 0 0 / 34px 34px, linear-gradient(90deg, color-mix(in srgb, var(--border) 45%, transparent) 1px, transparent 1px) 0 0 / 34px 34px, radial-gradient(900px 520px at 50% -10%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 60%), var(--bg)',
+  },
+  {
+    id: 'dots',
+    name: 'Dots',
+    value:
+      'radial-gradient(color-mix(in srgb, var(--border) 70%, transparent) 1.4px, transparent 1.4px) 0 0 / 22px 22px, var(--bg)',
+  },
+  {
+    id: 'nebula',
+    name: 'Nebula',
+    value:
+      'radial-gradient(700px 700px at 78% 18%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 55%), radial-gradient(620px 620px at 12% 78%, color-mix(in srgb, var(--loss) 20%, transparent), transparent 55%), linear-gradient(160deg, color-mix(in srgb, var(--bg) 84%, black), var(--bg))',
+  },
+  {
+    id: 'sunset',
+    name: 'Sunset',
+    value:
+      'linear-gradient(180deg, color-mix(in srgb, var(--draw) 22%, transparent), transparent 40%), radial-gradient(900px 500px at 50% 120%, color-mix(in srgb, var(--loss) 26%, transparent), transparent 60%), var(--bg)',
+  },
+  {
+    id: 'plain',
+    name: 'Plain',
+    value: 'var(--bg)',
+  },
 ];
 
 type Panel = 'session' | 'tilt' | 'insights' | 'trend' | 'games' | 'settings';
@@ -61,6 +103,7 @@ const PANELS: { id: Panel; label: string }[] = [
 
 export default function App() {
   const { themeId, setThemeId, themes } = useTheme();
+  const { canInstall, install } = useInstallPrompt();
 
   const [recent, setRecent] = useLocalStorage<string[]>('lfw.recentUsernames', []);
   const [watched, setWatched] = useLocalStorage<string | null>('lfw.selectedUsername', null);
@@ -206,18 +249,25 @@ export default function App() {
     <div className="app">
       <Header />
 
-      <div className="toolbar">
-        <ThemePicker themes={themes} value={themeId} onChange={setThemeId} />
-        <BackgroundPicker value={backgroundId} onChange={setBackgroundId} />
-        {watched && (
-          <button className="btn btn--ghost" onClick={handleShare}>
-            {copied ? 'Copied' : 'Share'}
-          </button>
-        )}
-        <button className="btn btn--ghost" onClick={handleRefresh} disabled={!watched}>
-          Refresh now
-        </button>
-      </div>
+      {(watched || canInstall) && (
+        <div className="toolbar">
+          {canInstall && (
+            <button className="btn btn--primary" onClick={install} title="Install as an app on your device">
+              Install app
+            </button>
+          )}
+          {watched && (
+            <>
+              <button className="btn btn--ghost" onClick={handleShare}>
+                {copied ? 'Copied' : 'Share'}
+              </button>
+              <button className="btn btn--ghost" onClick={handleRefresh}>
+                Refresh now
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       <SearchBar onSubmit={handleWatch} loading={searchLoading} error={searchError} />
 
@@ -308,9 +358,13 @@ export default function App() {
         </>
       ) : (
         <section className="card">
-          <p className="empty">
+          <p className="empty" style={{ marginTop: 0 }}>
             Enter a Lichess username above to start watching their status and stats.
           </p>
+          <div className="appearance">
+            <ThemePicker themes={themes} value={themeId} onChange={setThemeId} />
+            <BackgroundPicker value={backgroundId} onChange={setBackgroundId} />
+          </div>
         </section>
       )}
 
