@@ -1,27 +1,47 @@
 import { useMemo } from 'react';
 import type { GameRecord } from '../types';
-import { computeInsights, winRate, type ColorRecord } from '../utils/insights';
+import { computeInsights, type ColorRecord } from '../utils/insights';
 
 interface InsightsCardProps {
   /** Games newest-first. */
   games: GameRecord[];
 }
 
+function percent(value: number, total: number) {
+  return total === 0 ? 0 : Math.round((value / total) * 100);
+}
+
 function ColorRow({ label, rec }: { label: string; rec: ColorRecord }) {
-  const rate = winRate(rec);
+  const total = rec.wins + rec.losses + rec.draws;
+  const winPct = percent(rec.wins, total);
+  const drawPct = percent(rec.draws, total);
+  const lossPct = percent(rec.losses, total);
+
   return (
     <div className="color-row">
       <div className="color-row__head">
         <span className="color-row__label">{label}</span>
-        <span className="color-row__rate">{rate === null ? 'N/A' : `${rate}%`}</span>
+        <span className="color-row__rate">{total === 0 ? 'N/A' : `${winPct}% / ${drawPct}% / ${lossPct}%`}</span>
       </div>
       <div className="color-bar" aria-hidden="true">
         <span className="color-bar__seg color-bar__seg--win" style={{ flexGrow: rec.wins }} />
         <span className="color-bar__seg color-bar__seg--draw" style={{ flexGrow: rec.draws }} />
         <span className="color-bar__seg color-bar__seg--loss" style={{ flexGrow: rec.losses }} />
       </div>
-      <div className="color-row__counts muted">
-        {rec.wins}W / {rec.losses}L / {rec.draws}D
+      <div
+        className="outcome-split"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: 6,
+          marginTop: 8,
+          fontSize: '0.74rem',
+          fontWeight: 700,
+        }}
+      >
+        <span style={{ color: 'var(--win)' }}>Win {total === 0 ? 'N/A' : `${winPct}%`}</span>
+        <span style={{ color: 'var(--draw)' }}>Draw {total === 0 ? 'N/A' : `${drawPct}%`}</span>
+        <span style={{ color: 'var(--loss)' }}>Loss {total === 0 ? 'N/A' : `${lossPct}%`}</span>
       </div>
     </div>
   );
