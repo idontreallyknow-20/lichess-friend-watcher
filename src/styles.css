@@ -635,6 +635,7 @@ code {
   font-size: 1.8rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+  color: var(--accent-hover);
 }
 .sparkline {
   display: block;
@@ -834,8 +835,8 @@ code {
   flex-direction: column;
   gap: 3px;
   padding: 10px 12px;
-  background: var(--bg-elev-2);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-elev-2));
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
 }
 .metric__k {
   font-size: 0.66rem;
@@ -916,6 +917,7 @@ code {
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+  color: var(--accent-hover);
 }
 .alltime__prov {
   font-size: 1.2rem;
@@ -945,19 +947,20 @@ code {
   flex-direction: column;
   gap: 2px;
   padding: 12px 10px;
-  background: var(--bg-elev-2);
-  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-elev-2));
+  border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
 }
 .alltime-cell__rating {
   font-size: 1.4rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1;
+  color: var(--accent-hover);
 }
 .alltime-cell__label {
   font-size: 0.76rem;
   font-weight: 600;
-  color: var(--accent-hover);
+  color: var(--text-dim);
 }
 .alltime-cell__games {
   font-size: 0.68rem;
