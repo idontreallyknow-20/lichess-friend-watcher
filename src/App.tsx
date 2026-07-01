@@ -4,6 +4,7 @@ import { useLocalStorage } from './hooks/useLocalStorage';
 import { useStatus } from './hooks/useStatus';
 import { useGames } from './hooks/useGames';
 import { useTheme } from './hooks/useTheme';
+import { useInstallPrompt } from './hooks/useInstallPrompt';
 import { computeStats, filterToday } from './utils/stats';
 import { computeSessions, currentSession } from './utils/sessions';
 
@@ -61,6 +62,7 @@ const PANELS: { id: Panel; label: string }[] = [
 
 export default function App() {
   const { themeId, setThemeId, themes } = useTheme();
+  const { canInstall, install } = useInstallPrompt();
 
   const [recent, setRecent] = useLocalStorage<string[]>('lfw.recentUsernames', []);
   const [watched, setWatched] = useLocalStorage<string | null>('lfw.selectedUsername', null);
@@ -209,6 +211,11 @@ export default function App() {
       <div className="toolbar">
         <ThemePicker themes={themes} value={themeId} onChange={setThemeId} />
         <BackgroundPicker value={backgroundId} onChange={setBackgroundId} />
+        {canInstall && (
+          <button className="btn btn--primary" onClick={install} title="Install as an app on your device">
+            Install app
+          </button>
+        )}
         {watched && (
           <button className="btn btn--ghost" onClick={handleShare}>
             {copied ? 'Copied' : 'Share'}
