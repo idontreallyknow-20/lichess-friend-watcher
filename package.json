@@ -3,7 +3,9 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Spectate and track stats for any Lichess player. Spectating only — no chess advice, engine analysis, or in-game help.",
+  "description": "Spectator dashboard for any Lichess player: live status, game alerts, session stats, tilt meter, rating trend and openings. Spectating only, no chess advice.",
+  "author": "Joseph Leung (https://josephleung-site.vercel.app)",
+  "homepage": "https://lichess-friend-watcher.vercel.app",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
