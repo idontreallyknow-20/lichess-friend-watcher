@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://lichess-friend-watcher.vercel.app/sitemap.xml
