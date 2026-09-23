@@ -70,11 +70,11 @@ export function SessionCard({ games, gapMinutes, onGapChange, isPlaying, loading
     <section className="card">
       <h2 className="card__title">
         Current session
-        {loading && <span className="card__loading"> · loading</span>}
+        {loading && <span className="card__loading"> · updating…</span>}
       </h2>
 
       {!session || !stats ? (
-        <p className="empty">No recent games to build a session from.</p>
+        <p className="empty">{loading ? 'Loading games…' : 'No recent games to build a session from.'}</p>
       ) : (
         <>
           <div className="session-head">
@@ -136,7 +136,7 @@ export function SessionCard({ games, gapMinutes, onGapChange, isPlaying, loading
           </div>
 
           <div className="session-foot muted">
-            {sessionWhen(session.start, session.end)} - {todayCount} session{todayCount === 1 ? '' : 's'} today
+            {sessionWhen(session.start, session.end)} · {todayCount} session{todayCount === 1 ? '' : 's'} today
           </div>
         </>
       )}

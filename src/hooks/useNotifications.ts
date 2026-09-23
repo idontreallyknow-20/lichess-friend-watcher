@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { UserStatus } from '../types';
 import { playChime } from '../utils/sound';
 
-type Permission = NotificationPermission | 'unsupported';
+export type NotificationPermissionState = NotificationPermission | 'unsupported';
+type Permission = NotificationPermissionState;
 
 function currentPermission(): Permission {
   if (typeof Notification === 'undefined') return 'unsupported';

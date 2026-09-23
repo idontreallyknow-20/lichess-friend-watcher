@@ -18,7 +18,7 @@ export function GamesTable({ games, loading, error }: GamesTableProps) {
     <section className="card card--wide">
       <h2 className="card__title">
         Recent games
-        {loading && <span className="card__loading"> · loading…</span>}
+        {loading && <span className="card__loading"> · updating…</span>}
       </h2>
 
       {error && <p className="search__error" role="alert">{error}</p>}
