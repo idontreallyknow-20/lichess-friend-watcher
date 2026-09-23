@@ -13,6 +13,20 @@ export class LichessError extends Error {
   }
 }
 
+/** fetch() that turns network failures into a readable LichessError. */
+async function request(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw new LichessError("Couldn't reach Lichess. Check your connection and try again.");
+  }
+}
+
+/** Lichess usernames: 2 to 30 letters, digits, underscores or hyphens. */
+export function isValidUsername(username: string): boolean {
+  return /^[A-Za-z0-9][A-Za-z0-9_-]{1,29}$/.test(username);
+}
+
 export interface LiveGamePlayer {
   name: string;
   rating: number | null;
@@ -26,7 +40,7 @@ export interface LiveGameSummary {
 
 /** Check whether a Lichess username exists. */
 export async function validateUser(username: string): Promise<string | null> {
-  const res = await fetch(`${BASE}/api/user/${encodeURIComponent(username)}`);
+  const res = await request(`${BASE}/api/user/${encodeURIComponent(username)}`);
   if (res.status === 404) return null;
   if (res.status === 429) {
     throw new LichessError('Rate limited by Lichess. Please wait a moment.', 429);
@@ -40,7 +54,7 @@ export async function validateUser(username: string): Promise<string | null> {
 
 /** Fetch the parts of a user's profile this app uses. */
 export async function fetchProfile(username: string): Promise<Profile | null> {
-  const res = await fetch(`${BASE}/api/user/${encodeURIComponent(username)}`);
+  const res = await request(`${BASE}/api/user/${encodeURIComponent(username)}`);
   if (res.status === 404) return null;
   if (res.status === 429) {
     throw new LichessError('Rate limited by Lichess. Please wait a moment.', 429);
@@ -63,7 +77,7 @@ function historySpeedName(name: string) {
 
 /** Fetch Lichess rating-history points for real chart data. */
 export async function fetchRatingHistory(username: string): Promise<RatingHistorySeries[]> {
-  const res = await fetch(`${BASE}/api/user/${encodeURIComponent(username)}/rating-history`);
+  const res = await request(`${BASE}/api/user/${encodeURIComponent(username)}/rating-history`);
   if (res.status === 429) {
     throw new LichessError('Rate limited by Lichess. Please wait a moment.', 429);
   }
@@ -110,7 +124,7 @@ export async function fetchRatingHistory(username: string): Promise<RatingHistor
 /** Fetch the live status of a single user. */
 export async function fetchStatus(username: string): Promise<UserStatus | null> {
   const url = `${BASE}/api/users/status?ids=${encodeURIComponent(username)}&withGameIds=true`;
-  const res = await fetch(url);
+  const res = await request(url);
   if (res.status === 429) {
     throw new LichessError('Rate limited by Lichess. Slowing down.', 429);
   }
@@ -146,7 +160,7 @@ export async function fetchLiveGameSummary(gameId: string): Promise<LiveGameSumm
     evals: 'false',
     opening: 'false',
   });
-  const res = await fetch(`${BASE}/game/export/${encodeURIComponent(gameId)}?${params}`, {
+  const res = await request(`${BASE}/game/export/${encodeURIComponent(gameId)}?${params}`, {
     headers: { Accept: 'application/json' },
   });
   if (!res.ok) return null;
@@ -178,7 +192,7 @@ export async function fetchRecentGames(
     opening: 'true',
     sort: 'dateDesc',
   });
-  const res = await fetch(`${BASE}/api/games/user/${encodeURIComponent(username)}?${params}`, {
+  const res = await request(`${BASE}/api/games/user/${encodeURIComponent(username)}?${params}`, {
     headers: { Accept: 'application/x-ndjson' },
   });
   if (res.status === 429) {
