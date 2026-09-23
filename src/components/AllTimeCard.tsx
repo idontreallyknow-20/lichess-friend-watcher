@@ -23,7 +23,7 @@ export function AllTimeCard({ perfs, speed, loading }: AllTimeCardProps) {
     <section className="card">
       <h2 className="card__title">
         All-time rating
-        {loading && <span className="card__loading"> · loading</span>}
+        {loading && <span className="card__loading"> · updating…</span>}
       </h2>
 
       {speed !== 'all' ? (

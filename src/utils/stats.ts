@@ -51,7 +51,3 @@ export function filterLastWeek(games: GameRecord[]): GameRecord[] {
   return games.filter((g) => g.endTime >= cutoff);
 }
 
-/** Games that ended at or after the given session start time. */
-export function filterSession(games: GameRecord[], sessionStart: number): GameRecord[] {
-  return games.filter((g) => g.endTime >= sessionStart);
-}

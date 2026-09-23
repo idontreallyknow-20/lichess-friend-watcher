@@ -65,16 +65,16 @@ function moodFor(score: number, stats: ReturnType<typeof computeStats>, streak: 
       streak.type === 'loss' && streak.count >= 3
         ? [
             'Nah, this is tilt theater. The losses are stacking and the chair is one blunder from getting blamed.',
-            'He is in the danger zone. Three losses deep means the board is officially talking back.',
+            'They are in the danger zone. Three losses deep means the board is officially talking back.',
             'The session is yelling now. This is the exact moment a normal person takes a water break.',
             'Full red alert. The last few games are giving "I can win it back" energy.',
-            'He is pressing so hard the pieces are probably filing complaints.',
+            'They are pressing so hard the pieces are probably filing complaints.',
             'This is not a slump anymore, this is a live broadcast of bad decisions.',
           ]
         : [
             'The session is getting spicy in the bad direction. A reset would not be dramatic.',
             'Tilt meter is screaming. Every move feels like it came with extra emotional damage.',
-            'The vibes are cooked. He needs one clean win before this gets ridiculous.',
+            'The vibes are cooked. They need one clean win before this gets ridiculous.',
             'This is the part where confidence starts writing checks the position cannot cash.',
             'The board is winning the argument right now, loudly.',
             'Very messy scenes. The comeback arc needs to start immediately.',
@@ -88,20 +88,20 @@ function moodFor(score: number, stats: ReturnType<typeof computeStats>, streak: 
     const messages =
       stats.losses > stats.wins
         ? [
-            'He is a little underwater right now. Not doomed, but the board is asking questions.',
+            'They are a little underwater right now. Not doomed, but the board is asking questions.',
             'Shaky session. The rating is not on fire, but someone definitely smelled smoke.',
             'This is still fixable, but the next game has way too much emotional importance.',
-            'He is playing like every click arrives half a second late.',
+            'They are playing like every click arrives half a second late.',
             'The results are wobbling. One nice win would calm the whole room down.',
             'Not disaster class, but the dashboard is side-eyeing the last few games.',
           ]
         : [
             'The results are okay, but the vibe is wobbly. One bad game could make it loud.',
-            'He is surviving the chaos, but it is not exactly smooth criminal chess.',
+            'They are surviving the chaos, but it is not exactly smooth criminal chess.',
             'Scoreboard looks decent. The process looks like it took the scenic route.',
             'A little shaky, a little lucky, still alive. Respectfully unstable.',
             'Could be worse, could be cleaner. The meter is keeping one eye open.',
-            'He is winning enough to argue with the tilt meter, but not enough to silence it.',
+            'They are winning enough to argue with the tilt meter, but not enough to silence it.',
           ];
     return {
       label: 'Shaky',
@@ -113,16 +113,16 @@ function moodFor(score: number, stats: ReturnType<typeof computeStats>, streak: 
       stats.wins >= stats.losses
         ? [
             'Pretty stable session. Some chaos, but nothing that needs an intervention.',
-            'He is mostly holding it together. The tilt meter is annoyed, not alarmed.',
+            'They are mostly holding it together. The tilt meter is annoyed, not alarmed.',
             'Decent control. A few messy moments, but the wheels are still attached.',
             'The session is behaving. Not clean, but absolutely playable.',
             'Some turbulence, still cruising. The rating graph has not started yelling.',
-            'He is doing fine, with just enough chaos to keep it funny.',
+            'They are doing fine, with just enough chaos to keep it funny.',
           ]
         : [
             'Slightly messy, still recoverable. The next couple games decide the mood.',
             'Small trouble brewing. Nothing fatal, but the meter is warming up.',
-            'The losses are nibbling at the vibe. He needs one grown-up game.',
+            'The losses are nibbling at the vibe. They need one grown-up game.',
             'This is the suspicious middle zone where tilt pretends it is strategy.',
             'Recoverable, but the session is starting to develop a personality.',
             'Not terrible, not comfortable. The next result matters more than it should.',
@@ -135,9 +135,9 @@ function moodFor(score: number, stats: ReturnType<typeof computeStats>, streak: 
   const messages =
     stats.wins > stats.losses
       ? [
-          'He is cruising. The rating graph is allowed to smile a little.',
+          'They are cruising. The rating graph is allowed to smile a little.',
           'Smooth session. The tilt meter is basically unemployed right now.',
-          'He is cooking quietly. No panic, just points.',
+          'They are cooking quietly. No panic, just points.',
           'Clean enough to be dangerous. The board is cooperating for once.',
           'This is a good stretch. The losses are not getting invited to the party.',
           'Calm wins, calm rating, calm dashboard. Suspiciously professional.',
@@ -198,8 +198,8 @@ export function MoodCard({ games, gapMinutes, isPlaying, loading }: MoodCardProp
   if (!mood) {
     return (
       <section className="card">
-        <h2 className="card__title">Current mood{loading && <span className="card__loading"> - loading</span>}</h2>
-        <p className="empty">No session yet. Mood pending.</p>
+        <h2 className="card__title">Current mood{loading && <span className="card__loading"> · updating…</span>}</h2>
+        <p className="empty">{loading ? 'Loading games…' : 'No session yet. Mood pending.'}</p>
       </section>
     );
   }
@@ -239,67 +239,36 @@ export function MoodCard({ games, gapMinutes, isPlaying, loading }: MoodCardProp
 
   return (
     <section className="card">
-      <h2 className="card__title">Current mood{loading && <span className="card__loading"> - loading</span>}</h2>
-      <div
-        className="mood-head"
-        style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-start' }}
-      >
+      <h2 className="card__title">Current mood{loading && <span className="card__loading"> · updating…</span>}</h2>
+      <div className="mood-head">
         <div>
-          <div
-            className="mood-label"
-            style={{ fontSize: '1.45rem', fontWeight: 800, lineHeight: 1.05 }}
-          >
-            {mood.label}
-          </div>
-          <p className="mood-copy" style={{ color: 'var(--text-dim)', margin: '8px 0 0', lineHeight: 1.45 }}>
-            {mood.text}
-          </p>
+          <div className="mood-label">{mood.label}</div>
+          <p className="mood-copy">{mood.text}</p>
         </div>
-        <span
-          className={`mood-live ${isPlaying ? 'mood-live--on' : ''}`}
-          style={{
-            border: '1px solid var(--border)',
-            padding: '5px 9px',
-            whiteSpace: 'nowrap',
-            color: isPlaying ? 'var(--win)' : 'var(--text-muted)',
-            fontSize: '0.72rem',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-          }}
-        >
+        <span className={`mood-live ${isPlaying ? 'mood-live--on' : ''}`}>
           {isPlaying ? 'playing now' : 'between games'}
         </span>
       </div>
 
-      <div className="tilt" style={{ marginTop: 18 }} aria-label={`Tilt meter ${mood.score}%`}>
-        <div
-          className="tilt__top"
-          style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: '0.78rem' }}
-        >
+      <div
+        className="tilt"
+        role="meter"
+        aria-label="Tilt meter"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={mood.score}
+        aria-valuetext={`${tiltBand(mood.score)}, ${mood.score}%`}
+      >
+        <div className="tilt__top">
           <span>Tilt meter</span>
           <strong>
-            {tiltBand(mood.score)} - {mood.score}%
+            {tiltBand(mood.score)} · {mood.score}%
           </strong>
         </div>
-        <div
-          className="tilt__track"
-          style={{
-            height: 14,
-            overflow: 'hidden',
-            border: '1px solid var(--border)',
-            background:
-              'linear-gradient(90deg, color-mix(in srgb, var(--win) 60%, transparent), color-mix(in srgb, var(--draw) 65%, transparent), color-mix(in srgb, var(--loss) 70%, transparent))',
-          }}
-        >
+        <div className="tilt__track">
           <span
             className="tilt__fill"
-            style={{
-              display: 'block',
-              width: `${mood.score}%`,
-              height: '100%',
-              background: fillColor,
-              boxShadow: `0 0 18px ${fillColor}`,
-            }}
+            style={{ width: `${mood.score}%`, background: fillColor, boxShadow: `0 0 18px ${fillColor}` }}
           />
         </div>
       </div>

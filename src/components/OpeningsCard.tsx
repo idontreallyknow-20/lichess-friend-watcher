@@ -49,7 +49,7 @@ function colorRecommendation(openings: OpeningTableRow[], side: ColorSide, mode:
   return ranked[0] ?? null;
 }
 
-export function OpeningsCard({ games }: { games: GameRecord[] }) {
+export function OpeningsCard({ games, loading }: { games: GameRecord[]; loading: boolean }) {
   const [sort, setSort] = useState<SortKey>('popular');
   const [minGames, setMinGames] = useState(3);
   const openings = useMemo(() => computeOpeningTable(games), [games]);
@@ -89,9 +89,9 @@ export function OpeningsCard({ games }: { games: GameRecord[] }) {
   return (
     <section className="card card--wide">
       <div className="openings-head">
-        <h2 className="card__title">Openings</h2>
+        <h2 className="card__title">Openings{loading && <span className="card__loading"> · updating…</span>}</h2>
         <div className="openings-controls">
-          <div className="seg" role="tablist" aria-label="Opening sort">
+          <div className="seg" role="group" aria-label="Opening sort">
             {[
               ['popular', 'Most played'],
               ['best', 'Best score'],
@@ -104,17 +104,19 @@ export function OpeningsCard({ games }: { games: GameRecord[] }) {
               <button
                 key={id}
                 className={`seg__btn ${sort === id ? 'seg__btn--active' : ''}`}
+                aria-pressed={sort === id}
                 onClick={() => setSort(id as SortKey)}
               >
                 {label}
               </button>
             ))}
           </div>
-          <div className="seg" role="tablist" aria-label="Minimum games">
+          <div className="seg" role="group" aria-label="Minimum games">
             {[1, 2, 3, 5, 10].map((value) => (
               <button
                 key={value}
                 className={`seg__btn ${minGames === value ? 'seg__btn--active' : ''}`}
+                aria-pressed={minGames === value}
                 onClick={() => setMinGames(value)}
               >
                 {value}+ games
@@ -125,12 +127,12 @@ export function OpeningsCard({ games }: { games: GameRecord[] }) {
       </div>
 
       {openings.length === 0 ? (
-        <p className="empty">No opening data found in the recent games export.</p>
+        <p className="empty">{loading ? 'Loading games…' : 'No opening data in the recent games.'}</p>
       ) : (
         <>
           <div className="opening-summary">
             <div className="metric">
-              <span className="metric__k">Most played by you</span>
+              <span className="metric__k">Most played</span>
               <span className="metric__v">{favorite ? favorite.name : 'N/A'}</span>
             </div>
             <div className="metric">
@@ -154,10 +156,13 @@ export function OpeningsCard({ games }: { games: GameRecord[] }) {
             <OpeningRec title="Worst as Black" item={blackWorst} side="black" tone="neg" />
           </div>
 
-          <p className="empty openings-filter-note">
-            Showing openings with at least {minGames} game{minGames === 1 ? '' : 's'}.
+          <p className="muted openings-filter-note">
+            {sorted.length === 0
+              ? `No openings with ${minGames}+ games${sort === 'white' ? ' as White' : sort === 'black' ? ' as Black' : ''}. Lower the minimum to see more.`
+              : `Showing ${sorted.length} opening${sorted.length === 1 ? '' : 's'} with at least ${minGames} game${minGames === 1 ? '' : 's'}.`}
           </p>
 
+          {sorted.length > 0 && (
           <div className="table-wrap">
             <table className="games-table openings-table">
               <thead>
@@ -196,6 +201,7 @@ export function OpeningsCard({ games }: { games: GameRecord[] }) {
               </tbody>
             </table>
           </div>
+          )}
         </>
       )}
     </section>

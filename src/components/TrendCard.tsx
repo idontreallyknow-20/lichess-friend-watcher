@@ -51,11 +51,12 @@ export function TrendCard({ games, history, perfs, loading, error }: TrendCardPr
     <section className="card">
       <div className="trend-title-row">
         <h2 className="card__title">Rating trend</h2>
-        <div className="seg" role="tablist" aria-label="Rating speed">
+        <div className="seg" role="group" aria-label="Rating speed">
           {speeds.map((item) => (
             <button
               key={item}
               className={`seg__btn ${activeSpeed === item ? 'seg__btn--active' : ''}`}
+                aria-pressed={activeSpeed === item}
               onClick={() => setSpeed(item)}
             >
               {speedLabel(item)}
@@ -79,8 +80,8 @@ export function TrendCard({ games, history, perfs, loading, error }: TrendCardPr
           <Sparkline values={values} height={96} />
           <div className="trend__meta muted">
             {source}
-            {dateRange(points) ? ` - ${dateRange(points)}` : ''}
-            {loading ? ' - loading' : ''}
+            {dateRange(points) ? ` · ${dateRange(points)}` : ''}
+            {loading ? ' · updating…' : ''}
           </div>
         </>
       ) : (

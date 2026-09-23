@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { GameRecord, UserStatus } from '../types';
 import { fetchLiveGameSummary, type LiveGamePlayer, type LiveGameSummary } from '../api/lichess';
-import { formatDuration } from '../utils/format';
+import { formatDuration, formatSigned } from '../utils/format';
+import { speedLabel } from '../utils/speeds';
 import { useNow } from '../hooks/useNow';
 
 interface CurrentGameCardProps {
   username: string;
   status: UserStatus | null;
   gameDetectedAt: number | null;
+  statusError: string | null;
   games: GameRecord[];
 }
 
@@ -49,7 +51,7 @@ function timeAgo(timestamp: number, now: number) {
   return `${Math.floor(delta / day)}d ago`;
 }
 
-export function CurrentGameCard({ username, status, gameDetectedAt, games }: CurrentGameCardProps) {
+export function CurrentGameCard({ username, status, gameDetectedAt, statusError, games }: CurrentGameCardProps) {
   const now = useNow(1000);
   const gameId = status?.playing ? status.playingId : null;
   const [summary, setSummary] = useState<LiveGameSummary | null>(null);
@@ -78,54 +80,18 @@ export function CurrentGameCard({ username, status, gameDetectedAt, games }: Cur
 
   return (
     <section className="card card--game">
-      <h2 className="card__title">Live status</h2>
+      <h2 className="card__title">Current game</h2>
 
       {gameId ? (
         <>
-          <div
-            className="game__status"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-              flexWrap: 'wrap',
-              marginTop: 12,
-            }}
-          >
-            <span
-              style={{
-                color: 'var(--win)',
-                fontSize: '0.78rem',
-                fontWeight: 800,
-                letterSpacing: 0,
-                textTransform: 'uppercase',
-              }}
-            >
-              {statusText}
-            </span>
-            <span style={{ color: 'var(--text-dim)', fontSize: '0.82rem' }}>
+          <div className="game__status">
+            <span className="game__live">{statusText}</span>
+            <span className="game__watched">
               Watched for {gameDetectedAt ? formatDuration(now - gameDetectedAt) : '0:00'}
             </span>
           </div>
-          <p
-            className="game__matchup"
-            style={{ margin: '12px 0 0', fontSize: '1.05rem', fontWeight: 800, lineHeight: 1.35 }}
-          >
-            {liveLabel}
-          </p>
-          <div
-            className="game__meta-line"
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              gap: 10,
-              flexWrap: 'wrap',
-              marginTop: 10,
-              color: 'var(--text-dim)',
-              fontSize: '0.82rem',
-            }}
-          >
+          <p className="game__matchup">{liveLabel}</p>
+          <div className="game__meta-line">
             <span>
               Game ID: <code>{gameId}</code>
             </span>
@@ -140,11 +106,9 @@ export function CurrentGameCard({ username, status, gameDetectedAt, games }: Cur
           </a>
           <p className="game__note">Opens the live board on lichess.org. This app shows no moves or analysis.</p>
         </>
-      ) : status?.online ? (
-        <p className="empty">{statusText}</p>
       ) : (
         <div className="offline-status">
-          <p className="empty">{statusText}</p>
+          <p className="empty">{status ? statusText : statusError ? 'Live status unavailable right now.' : 'Checking status…'}</p>
           {lastGame ? (
             <div className="last-played">
               <div className="last-played__head">
@@ -164,18 +128,25 @@ export function CurrentGameCard({ username, status, gameDetectedAt, games }: Cur
                   {resultLabel(lastGame.result)}
                 </strong>
                 <span>
-                  {lastGame.speed} vs {lastGame.opponent}
+                  {speedLabel(lastGame.speed)} vs {lastGame.opponent}
                 </span>
               </div>
               <div className="last-played__meta">
                 <span>{lastGame.timeControl}</span>
                 {lastGame.ratingDiff !== null && (
                   <span className={lastGame.ratingDiff >= 0 ? 'stat--positive' : 'stat--negative'}>
-                    {lastGame.ratingDiff >= 0 ? '+' : ''}
-                    {lastGame.ratingDiff} rating
+                    {formatSigned(lastGame.ratingDiff)} rating
                   </span>
                 )}
               </div>
+              <a
+                className="last-played__link"
+                href={`https://lichess.org/${lastGame.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                View game on Lichess
+              </a>
             </div>
           ) : (
             <p className="empty">No recent finished games found yet.</p>

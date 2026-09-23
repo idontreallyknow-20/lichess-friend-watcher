@@ -2,15 +2,134 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Spectate and track stats for any Lichess player." />
-    <meta name="theme-color" content="#0f1115" />
+    <title>Lichess Friend Watcher | a Lichess spectator dashboard by Joseph Leung</title>
+    <meta
+      name="description"
+      content="Watch any Lichess player live: online status, current game, session record, tilt meter, rating trend and openings. A free spectator dashboard built by Joseph Leung."
+    />
+    <meta name="author" content="Joseph Leung" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="https://lichess-friend-watcher.vercel.app/" />
+    <link rel="author" href="https://josephleung-site.vercel.app" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <title>Lichess Friend Watcher</title>
+    <meta name="theme-color" content="#0f1115" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Lichess Friend Watcher" />
+    <meta property="og:title" content="Lichess Friend Watcher | a Lichess spectator dashboard by Joseph Leung" />
+    <meta
+      property="og:description"
+      content="Live status, one-click spectating, session stats, tilt meter, rating trend and openings for any Lichess player. Built by Joseph Leung."
+    />
+    <meta property="og:url" content="https://lichess-friend-watcher.vercel.app/" />
+    <meta property="og:image" content="https://lichess-friend-watcher.vercel.app/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Lichess Friend Watcher dashboard preview, built by Joseph Leung" />
+    <meta property="og:locale" content="en_CA" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Lichess Friend Watcher | a Lichess spectator dashboard by Joseph Leung" />
+    <meta
+      name="twitter:description"
+      content="Live status, one-click spectating, session stats, tilt meter, rating trend and openings for any Lichess player. Built by Joseph Leung."
+    />
+    <meta name="twitter:image" content="https://lichess-friend-watcher.vercel.app/og-image.png" />
+    <meta name="twitter:image:alt" content="Lichess Friend Watcher dashboard preview, built by Joseph Leung" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Person",
+            "@id": "https://josephleung-site.vercel.app/#joseph",
+            "name": "Joseph Leung",
+            "alternateName": "Joseph Wah Sing Leung",
+            "url": "https://josephleung-site.vercel.app",
+            "description": "Retired national-level chess player, calisthenics athlete and founder of Daily Brief HQ, from Richmond Hill, Ontario.",
+            "homeLocation": { "@type": "Place", "name": "Richmond Hill, Ontario, Canada" },
+            "knowsAbout": ["Chess", "Lichess", "Web development", "Startups"],
+            "sameAs": [
+              "https://www.linkedin.com/in/joseph-leung-21b3473bb/",
+              "https://github.com/idontreallyknow-20",
+              "https://lichess.org/@/BigTrustedCrabby",
+              "https://lichess.org/@/UltraAddict2010",
+              "https://www.chess.com/member/squeakycrab",
+              "https://ratings.fide.com/profile/2636654",
+              "https://www.chess.ca/en/ratings/p/?id=167606",
+              "https://dailybriefhq.com",
+              "https://dailybriefhq.com/about",
+              "https://nerfchess.com"
+            ]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://lichess-friend-watcher.vercel.app/#website",
+            "name": "Lichess Friend Watcher",
+            "url": "https://lichess-friend-watcher.vercel.app/",
+            "inLanguage": "en",
+            "creator": { "@id": "https://josephleung-site.vercel.app/#joseph" },
+            "author": { "@id": "https://josephleung-site.vercel.app/#joseph" }
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://lichess-friend-watcher.vercel.app/#app",
+            "name": "Lichess Friend Watcher",
+            "url": "https://lichess-friend-watcher.vercel.app/",
+            "description": "A spectator dashboard for Lichess: live online and in-game status, one-click spectating, game alerts, session record, tilt meter, rating trend and opening stats for any player.",
+            "applicationCategory": "GameApplication",
+            "operatingSystem": "Any (web browser)",
+            "browserRequirements": "Requires JavaScript",
+            "isAccessibleForFree": true,
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "CAD" },
+            "image": "https://lichess-friend-watcher.vercel.app/og-image.png",
+            "screenshot": "https://lichess-friend-watcher.vercel.app/og-image.png",
+            "creator": { "@id": "https://josephleung-site.vercel.app/#joseph" },
+            "author": { "@id": "https://josephleung-site.vercel.app/#joseph" },
+            "isPartOf": { "@id": "https://lichess-friend-watcher.vercel.app/#website" }
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Static first paint for crawlers and no-JS visitors. React replaces it with the same content. -->
+      <div class="app">
+        <header class="header">
+          <div class="header__brand">
+            <span class="header__logo" aria-hidden="true">♞</span>
+            <div>
+              <h1 class="header__title">Lichess Friend Watcher</h1>
+              <p class="header__subtitle">Live status and stats for any Lichess player</p>
+            </div>
+          </div>
+        </header>
+        <main class="main">
+          <section class="card">
+            <h2 class="card__title">How it works</h2>
+            <p class="intro">
+              Type any Lichess username to see if they are online or mid-game, spectate with one click, and follow
+              their session record, tilt meter, rating trend and openings. Spectating only: no moves, engine lines or
+              advice.
+            </p>
+            <noscript><p class="intro">Lichess Friend Watcher needs JavaScript to load live data.</p></noscript>
+          </section>
+        </main>
+        <footer class="site-footer">
+          <p class="site-footer__credit">Built by <a href="https://josephleung-site.vercel.app" rel="author">Joseph Leung</a></p>
+          <p>
+            Joseph Wah Sing Leung is a retired national-level chess player from Richmond Hill, Ontario, and the founder
+            of Daily Brief HQ.
+          </p>
+        </footer>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

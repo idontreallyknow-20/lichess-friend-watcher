@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { validateUser } from './api/lichess';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { isValidUsername, validateUser } from './api/lichess';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useStatus } from './hooks/useStatus';
 import { useGames } from './hooks/useGames';
 import { useProfile } from './hooks/useProfile';
 import { useRatingHistory } from './hooks/useRatingHistory';
 import { useTheme } from './hooks/useTheme';
+import { useNotifications, type NotificationPermissionState } from './hooks/useNotifications';
 import { computeStats, filterLastWeek, filterToday } from './utils/stats';
 import { computeSessions, currentSession } from './utils/sessions';
 import { filterBySpeed } from './utils/insights';
@@ -27,8 +28,12 @@ import { MoodCard } from './components/MoodCard';
 import { TrendCard } from './components/TrendCard';
 import { GamesTable } from './components/GamesTable';
 import { OpeningsCard } from './components/OpeningsCard';
+import { SiteFooter } from './components/SiteFooter';
 
 const MAX_RECENT = 8;
+const BASE_TITLE = document.title;
+/** Longest edge of an uploaded background, so it fits in localStorage. */
+const MAX_BACKGROUND_EDGE = 1920;
 const BACKGROUNDS = [
   {
     id: 'aurora',
@@ -135,11 +140,12 @@ export default function App() {
   const [sessionGapMin, setSessionGapMin] = useLocalStorage<number>('lfw.sessionGap', 30);
   const [backgroundId, setBackgroundId] = useLocalStorage<string>('lfw.background', 'aurora');
   const [customBackground, setCustomBackground] = useLocalStorage<string | null>('lfw.customBackground', null);
+  const [soundEnabled, setSoundEnabled] = useLocalStorage<boolean>('lfw.sound', false);
 
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [activePanel, setActivePanel] = useState<Panel>('session');
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<string | null>(null);
 
   // Bumped to force a games refetch (new game detected / manual refresh).
   const [refreshKey, setRefreshKey] = useState(0);
@@ -148,6 +154,7 @@ export default function App() {
   const gamesState = useGames(watched, refreshKey);
   const profileState = useProfile(watched);
   const ratingHistoryState = useRatingHistory(watched);
+  const notifications = useNotifications(statusState.status, soundEnabled);
 
   useEffect(() => {
     if (backgroundId === 'custom' && customBackground) {
@@ -165,8 +172,14 @@ export default function App() {
   }, [backgroundId, customBackground]);
 
   // Refetch games whenever a game starts or ends so the table stays current.
+  // (Skips the first run: useGames already loads on mount.)
   const detectedAt = statusState.gameDetectedAt;
+  const seenDetectedAt = useRef(false);
   useEffect(() => {
+    if (!seenDetectedAt.current) {
+      seenDetectedAt.current = true;
+      return;
+    }
     setRefreshKey((k) => k + 1);
   }, [detectedAt]);
 
@@ -182,8 +195,12 @@ export default function App() {
 
   const handleWatch = useCallback(
     async (name: string) => {
-      setSearchLoading(true);
       setSearchError(null);
+      if (!isValidUsername(name)) {
+        setSearchError('Lichess usernames are 2 to 30 letters, numbers, underscores or hyphens.');
+        return;
+      }
+      setSearchLoading(true);
       try {
         const canonical = await validateUser(name);
         if (!canonical) {
@@ -222,17 +239,15 @@ export default function App() {
 
   // Reflect live status in the browser tab title.
   useEffect(() => {
-    const base = 'Lichess Friend Watcher';
     const s = statusState.status;
     if (!watched || !s) {
-      document.title = base;
+      document.title = BASE_TITLE;
       return;
     }
-    if (s.playing) document.title = `${s.name} playing`;
-    else if (s.online) document.title = `${s.name} online`;
-    else document.title = `${s.name} offline`;
+    const state = s.playing ? 'playing' : s.online ? 'online' : 'offline';
+    document.title = `${s.name} ${state} | Lichess Friend Watcher`;
     return () => {
-      document.title = base;
+      document.title = BASE_TITLE;
     };
   }, [watched, statusState.status]);
 
@@ -265,11 +280,29 @@ export default function App() {
   const handleShare = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
+      setCopied('Link copied');
     } catch {
-      // Clipboard unavailable; ignore.
+      setCopied('Copy the URL bar');
     }
+    window.setTimeout(() => setCopied(null), 1800);
+  }, []);
+
+  // Arrow-key navigation between dashboard tabs (WAI-ARIA tabs pattern).
+  const handleTabKey = useCallback((e: KeyboardEvent<HTMLButtonElement>) => {
+    const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
+    if (!keys.includes(e.key)) return;
+    e.preventDefault();
+    setActivePanel((current) => {
+      const i = PANELS.findIndex((p) => p.id === current);
+      const next =
+        e.key === 'Home'
+          ? 0
+          : e.key === 'End'
+            ? PANELS.length - 1
+            : (i + (e.key === 'ArrowRight' ? 1 : -1) + PANELS.length) % PANELS.length;
+      document.getElementById(`tab-${PANELS[next].id}`)?.focus();
+      return PANELS[next].id;
+    });
   }, []);
 
   const todayGames = useMemo(() => filterToday(gamesState.games), [gamesState.games]);
@@ -284,11 +317,12 @@ export default function App() {
   return (
     <div className="app">
       <Header action={<InstallButton />} />
+      <main className="main">
 
       {watched && (
         <div className="toolbar">
-          <button className="btn btn--ghost" onClick={handleShare}>
-            {copied ? 'Copied' : 'Share'}
+          <button className="btn btn--ghost" onClick={handleShare} aria-live="polite">
+            {copied ?? 'Share'}
           </button>
           <button className="btn btn--ghost" onClick={handleRefresh}>
             Refresh now
@@ -307,22 +341,27 @@ export default function App() {
 
       {watched ? (
         <>
-          <nav className="tabs" role="tablist" aria-label="Dashboard sections">
+          <div className="tabs" role="tablist" aria-label="Dashboard sections">
             {PANELS.map((panel) => (
               <button
                 key={panel.id}
+                id={`tab-${panel.id}`}
                 className={`tab ${activePanel === panel.id ? 'tab--active' : ''}`}
                 role="tab"
                 aria-selected={activePanel === panel.id}
+                aria-controls="dashboard-panel"
+                tabIndex={activePanel === panel.id ? 0 : -1}
                 onClick={() => setActivePanel(panel.id)}
+                onKeyDown={handleTabKey}
               >
                 <span className="tab__name">{panel.label}</span>
               </button>
             ))}
-          </nav>
+          </div>
 
+          <div id="dashboard-panel" role="tabpanel" aria-labelledby={`tab-${activePanel}`}>
           {activePanel === 'session' && (
-            <div className="grid">
+            <div className="grid grid--pairs">
               <StatusCard
                 username={watched}
                 status={statusState.status}
@@ -334,6 +373,7 @@ export default function App() {
                 username={watched}
                 status={statusState.status}
                 gameDetectedAt={statusState.gameDetectedAt}
+                statusError={statusState.error}
                 games={gamesState.games}
               />
               <StatsCard title="Today" stats={dailyStats} loading={gamesState.loading} />
@@ -377,7 +417,7 @@ export default function App() {
             />
           )}
 
-          {activePanel === 'openings' && <OpeningsCard games={gamesState.games} />}
+          {activePanel === 'openings' && <OpeningsCard games={gamesState.games} loading={gamesState.loading} />}
 
           {activePanel === 'games' && (
             <GamesTable games={gamesState.games} loading={gamesState.loading} error={gamesState.error} />
@@ -394,13 +434,21 @@ export default function App() {
               onCustomBackground={setCustomBackground}
               gapMinutes={sessionGapMin}
               onGapChange={setSessionGapMin}
+              notifications={notifications}
+              watched={watched}
+              soundEnabled={soundEnabled}
+              onSoundChange={setSoundEnabled}
             />
           )}
+          </div>
         </>
       ) : (
         <section className="card">
-          <p className="empty" style={{ marginTop: 0 }}>
-            Enter a Lichess username above to start watching their status and stats.
+          <h2 className="card__title">How it works</h2>
+          <p className="intro">
+            Type any Lichess username to see if they are online or mid-game, spectate with one click, and follow
+            their session record, tilt meter, rating trend and openings. Spectating only: no moves, engine lines or
+            advice.
           </p>
           <div className="appearance">
             <ThemePicker themes={themes} value={themeId} onChange={setThemeId} />
@@ -413,6 +461,8 @@ export default function App() {
           </div>
         </section>
       )}
+      </main>
+      <SiteFooter />
     </div>
   );
 }
@@ -474,9 +524,10 @@ function InsightsPanel({
   return (
     <div className="insights-panel">
       <div className="insights-controls">
-        <div className="seg" role="tablist" aria-label="Speed">
+        <div className="seg" role="group" aria-label="Speed">
           <button
             className={`seg__btn ${speed === 'all' ? 'seg__btn--active' : ''}`}
+                aria-pressed={speed === 'all'}
             onClick={() => setSpeed('all')}
           >
             All
@@ -485,17 +536,19 @@ function InsightsPanel({
             <button
               key={s}
               className={`seg__btn ${speed === s ? 'seg__btn--active' : ''}`}
+                aria-pressed={speed === s}
               onClick={() => setSpeed(s)}
             >
               {speedLabel(s)}
             </button>
           ))}
         </div>
-        <div className="seg" role="tablist" aria-label="Scope">
+        <div className="seg" role="group" aria-label="Scope">
           {SCOPES.map((s) => (
             <button
               key={s.id}
               className={`seg__btn ${scope === s.id ? 'seg__btn--active' : ''}`}
+                aria-pressed={scope === s.id}
               onClick={() => setScope(s.id)}
             >
               {s.label}
@@ -526,14 +579,12 @@ function BackgroundPicker({
   const handleUpload = useCallback(
     (file: File | null) => {
       if (!file || !file.type.startsWith('image/')) return;
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result !== 'string') return;
-        onCustomBackground(reader.result);
-        onChange('custom');
-      };
-      reader.readAsDataURL(file);
+      shrinkImage(file, MAX_BACKGROUND_EDGE)
+        .then((dataUrl) => {
+          onCustomBackground(dataUrl);
+          onChange('custom');
+        })
+        .catch(() => undefined);
     },
     [onChange, onCustomBackground],
   );
@@ -594,6 +645,10 @@ interface SettingsPanelProps {
   onCustomBackground: (value: string | null) => void;
   gapMinutes: number;
   onGapChange: (minutes: number) => void;
+  notifications: ReturnType<typeof useNotifications>;
+  watched: string;
+  soundEnabled: boolean;
+  onSoundChange: (value: boolean) => void;
 }
 
 function SettingsPanel({
@@ -606,14 +661,40 @@ function SettingsPanel({
   onCustomBackground,
   gapMinutes,
   onGapChange,
+  notifications,
+  watched,
+  soundEnabled,
+  onSoundChange,
 }: SettingsPanelProps) {
+  const { permission, requestPermission, testNotification } = notifications;
   return (
     <section className="card card--wide">
       <h2 className="card__title">Settings</h2>
-      <div
-        className="settings-grid"
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}
-      >
+      <div className="settings-alerts">
+        <div>
+          <h3 className="settings-alerts__title">Game alerts</h3>
+          <p className="settings-alerts__copy">
+            Get a notification the moment {watched} starts a game. Works while this tab or the installed app is open.
+          </p>
+        </div>
+        <div className="settings-alerts__actions">
+          <NotificationStatus permission={permission} onRequest={requestPermission} />
+          {permission === 'granted' && (
+            <button className="btn btn--ghost" type="button" onClick={() => testNotification(watched)}>
+              Send test alert
+            </button>
+          )}
+          <button
+            className={`btn btn--ghost ${soundEnabled ? 'btn--on' : ''}`}
+            type="button"
+            aria-pressed={soundEnabled}
+            onClick={() => onSoundChange(!soundEnabled)}
+          >
+            {soundEnabled ? 'Sound on' : 'Sound off'}
+          </button>
+        </div>
+      </div>
+      <div className="settings-grid">
         <ThemePicker themes={themes} value={themeId} onChange={onThemeChange} />
         <BackgroundPicker
           value={backgroundId}
@@ -634,4 +715,51 @@ function SettingsPanel({
       </div>
     </section>
   );
+}
+
+function NotificationStatus({
+  permission,
+  onRequest,
+}: {
+  permission: NotificationPermissionState;
+  onRequest: () => void;
+}) {
+  if (permission === 'unsupported') {
+    return <span className="notif-status notif-status--off">Not supported in this browser</span>;
+  }
+  if (permission === 'granted') {
+    return <span className="notif-status notif-status--on">Alerts on</span>;
+  }
+  if (permission === 'denied') {
+    return <span className="notif-status notif-status--off">Blocked in browser settings</span>;
+  }
+  return (
+    <button className="btn btn--primary" type="button" onClick={onRequest}>
+      Enable alerts
+    </button>
+  );
+}
+
+/** Downscale an uploaded image to a JPEG data URL so it fits in localStorage. */
+function shrinkImage(file: File, maxEdge: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return reject(new Error('Canvas unavailable'));
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.82));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Could not read image'));
+    };
+    img.src = url;
+  });
 }
